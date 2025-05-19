@@ -5,13 +5,6 @@ _dont forget running docker before_
 ```cmd
 make up
 ```
-or
-```cmd
-make db-up
-````
-```cmd
-make run
-```
 
 ## About
 I used Gin, SQL and migrate.
