@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: weather-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:  ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB:     ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: weather-app
+    restart: unless-stopped
+    environment:
+      # App settings
+      APP_PORT:            "${APP_PORT}"
+      READ_TIMEOUT:        "${READ_TIMEOUT}"
+      WRITE_TIMEOUT:       "${WRITE_TIMEOUT}"
+      IDLE_TIMEOUT:        "${IDLE_TIMEOUT}"
+
+      # Database connection
+      DB_HOST:             "postgres"
+      DB_PORT:             "5432"
+      DB_USER:             "${DB_USER}"
+      DB_PASSWORD:         "${DB_PASSWORD}"
+      DB_NAME:             "${DB_NAME}"
+      DB_SSL_MODE:         "${DB_SSL_MODE}"
+      MAX_OPEN_CONNS:      "${MAX_OPEN_CONNS}"
+      DB_MAX_IDLE_CONNS:   "${DB_MAX_IDLE_CONNS}"
+      DB_MAX_IDLE_TIME:    "${DB_MAX_IDLE_TIME}"
+
+      # Migrations
+      MIGRATION_PATH:      "${MIGRATION_PATH}"
+
+      # Weather API
+      WEATHER_API_KEY:     "${WEATHER_API_KEY}"
+      WEATHER_SERVICE_URL: "${WEATHER_SERVICE_URL}"
+
+      # Mailer
+      SMTP_USER:           "${SMTP_USER}"
+      SMTP_PASS:           "${SMTP_PASS}"
+      SMTP_HOST:           "${SMTP_HOST}"
+      SMTP_PORT:           "${SMTP_PORT}"
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
