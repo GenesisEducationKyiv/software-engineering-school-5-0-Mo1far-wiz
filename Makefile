@@ -30,8 +30,8 @@ build:
 	@go build -o bin/\$(BINARY\_NAME) \$(MAIN\_PATH)
 
 run: build
-	@APP\_PORT=\$(APP\_PORT)&#x20;
-	DB\_URL="\$(DB\_URL)"&#x20;
+	@APP\_PORT=\$(APP\_PORT) /
+	DB\_URL="\$(DB\_URL)" /
 	./bin/\$(BINARY\_NAME)
 
 migrate-up:
@@ -39,8 +39,6 @@ migrate-up:
 
 migrate-down:
 	@migrate -path=\$(MIGRATION\_PATH) -database="\$(DB\_URL)" down
-
-# Docker commands
 
 db-up:
 	@echo "Starting database container..."
