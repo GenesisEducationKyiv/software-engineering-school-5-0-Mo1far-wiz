@@ -5,7 +5,7 @@ MAIN_PATH=./cmd/main.go
 
 DB_URL=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)
 
-.PHONY: help build clean run migrate-up migrate-down db-up db-down up down
+.PHONY: help build clean run migrate-up migrate-down db-up db-down up down lint
 
 help:
 	@echo "Usage: make [command]"
@@ -54,3 +54,6 @@ up:
 down:
 	@echo "Stopping all services..."
 	@docker-compose down
+
+lint:
+	@golangci-lint run
