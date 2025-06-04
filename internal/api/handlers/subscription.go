@@ -25,10 +25,10 @@ func SHA256Token(input string) string {
 
 type SubscriptionHandler struct {
 	store         store.Storage
-	mailerService *mailer.SmtpMailer
+	mailerService *mailer.SMTPMailer
 }
 
-func NewSubscriptionHandler(store store.Storage, mailerService *mailer.SmtpMailer) *SubscriptionHandler {
+func NewSubscriptionHandler(store store.Storage, mailerService *mailer.SMTPMailer) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		store:         store,
 		mailerService: mailerService,
@@ -55,7 +55,6 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 		logError(err, "cant create subscription")
 		if errors.Is(err, store.ErrorAlreadyExists) {
 			c.JSON(http.StatusBadRequest, "Email already subscribed")
-
 		} else {
 			c.JSON(http.StatusBadRequest, "Invalid input")
 		}

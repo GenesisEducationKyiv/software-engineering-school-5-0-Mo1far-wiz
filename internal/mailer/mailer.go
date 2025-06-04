@@ -10,9 +10,15 @@ import (
 
 	"weather/internal/models"
 	"weather/internal/weather"
+
+	"github.com/pkg/errors"
 )
 
-type SmtpMailer struct {
+const (
+	Day = 24 * time.Hour
+)
+
+type SMTPMailer struct {
 	User           string
 	Password       string
 	Host           string
@@ -27,8 +33,8 @@ type SmtpMailer struct {
 	running  bool
 }
 
-func New(user, password, host, port string, weatherService *weather.RemoteService) *SmtpMailer {
-	return &SmtpMailer{
+func New(user, password, host, port string, weatherService *weather.RemoteService) *SMTPMailer {
+	return &SMTPMailer{
 		User:           user,
 		Password:       password,
 		Host:           host,
@@ -39,59 +45,59 @@ func New(user, password, host, port string, weatherService *weather.RemoteServic
 	}
 }
 
-func (m *SmtpMailer) AddDailyTarget(sub models.Subscription) {
+func (m *SMTPMailer) AddDailyTarget(sub models.Subscription) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
-	for _, existing := range m.targets["daily"] {
+	for _, existing := range m.targets[models.Daily] {
 		if existing.Email == sub.Email {
 			return
 		}
 	}
-	m.targets["daily"] = append(m.targets["daily"], sub)
+	m.targets[models.Daily] = append(m.targets[models.Daily], sub)
 }
 
-func (m *SmtpMailer) AddHourlyTarget(sub models.Subscription) {
+func (m *SMTPMailer) AddHourlyTarget(sub models.Subscription) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
-	for _, existing := range m.targets["hourly"] {
+	for _, existing := range m.targets[models.Hourly] {
 		if existing.Email == sub.Email {
 			return
 		}
 	}
-	m.targets["hourly"] = append(m.targets["hourly"], sub)
+	m.targets[models.Hourly] = append(m.targets[models.Hourly], sub)
 }
 
-func (m *SmtpMailer) RemoveDailyTarget(email string) {
+func (m *SMTPMailer) RemoveDailyTarget(email string) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
-	subs := m.targets["daily"]
+	subs := m.targets[models.Daily]
 	for i, sub := range subs {
 		if sub.Email == email {
 			subs[i] = subs[len(subs)-1]
-			m.targets["daily"] = subs[:len(subs)-1]
+			m.targets[models.Daily] = subs[:len(subs)-1]
 			return
 		}
 	}
 }
 
-func (m *SmtpMailer) RemoveHourlyTarget(email string) {
+func (m *SMTPMailer) RemoveHourlyTarget(email string) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
-	subs := m.targets["hourly"]
+	subs := m.targets[models.Hourly]
 	for i, sub := range subs {
 		if sub.Email == email {
 			subs[i] = subs[len(subs)-1]
-			m.targets["hourly"] = subs[:len(subs)-1]
+			m.targets[models.Hourly] = subs[:len(subs)-1]
 			return
 		}
 	}
 }
 
-func (m *SmtpMailer) Start() {
+func (m *SMTPMailer) Start() {
 	m.mx.Lock()
 	if m.running {
 		m.mx.Unlock()
@@ -113,7 +119,7 @@ func (m *SmtpMailer) Start() {
 			return
 		}
 		m.sendDailyEmails()
-		ticker := time.NewTicker(24 * time.Hour)
+		ticker := time.NewTicker(Day)
 		defer ticker.Stop()
 		for {
 			select {
@@ -150,7 +156,7 @@ func (m *SmtpMailer) Start() {
 	}()
 }
 
-func (m *SmtpMailer) Stop() {
+func (m *SMTPMailer) Stop() {
 	m.mx.Lock()
 	if !m.running {
 		m.mx.Unlock()
@@ -162,9 +168,9 @@ func (m *SmtpMailer) Stop() {
 	m.wg.Wait()
 }
 
-func (m *SmtpMailer) sendDailyEmails() {
+func (m *SMTPMailer) sendDailyEmails() {
 	m.mx.RLock()
-	subs := append([]models.Subscription(nil), m.targets["daily"]...)
+	subs := append([]models.Subscription(nil), m.targets[models.Daily]...)
 	m.mx.RUnlock()
 
 	for _, sub := range subs {
@@ -191,9 +197,9 @@ func (m *SmtpMailer) sendDailyEmails() {
 	}
 }
 
-func (m *SmtpMailer) sendHourlyEmails() {
+func (m *SMTPMailer) sendHourlyEmails() {
 	m.mx.RLock()
-	subs := append([]models.Subscription(nil), m.targets["hourly"]...)
+	subs := append([]models.Subscription(nil), m.targets[models.Hourly]...)
 	m.mx.RUnlock()
 
 	for _, sub := range subs {
@@ -220,7 +226,7 @@ func (m *SmtpMailer) sendHourlyEmails() {
 	}
 }
 
-func (m *SmtpMailer) SendEmail(to, subject, body string) error {
+func (m *SMTPMailer) SendEmail(to, subject, body string) (err error) {
 	var msg strings.Builder
 	msg.WriteString(fmt.Sprintf("From: %s\r\n", m.User))
 	msg.WriteString(fmt.Sprintf("To: %s\r\n", to))
@@ -235,13 +241,25 @@ func (m *SmtpMailer) SendEmail(to, subject, body string) error {
 	if err != nil {
 		return fmt.Errorf("connect SMTP: %w", err)
 	}
-	defer conn.Close()
+
+	defer func() {
+		closeErr := conn.Close()
+		if closeErr != nil && err == nil {
+			err = errors.Wrap(closeErr, "failed to close connection")
+		}
+	}()
 
 	client, err := smtp.NewClient(conn, m.Host)
 	if err != nil {
 		return fmt.Errorf("new SMTP client: %w", err)
 	}
-	defer client.Quit()
+
+	defer func() {
+		quitErr := client.Quit()
+		if quitErr != nil && err == nil {
+			err = errors.Wrap(quitErr, "failed to quit client")
+		}
+	}()
 
 	if err := client.Auth(auth); err != nil {
 		return fmt.Errorf("SMTP auth: %w", err)
@@ -257,7 +275,13 @@ func (m *SmtpMailer) SendEmail(to, subject, body string) error {
 	if err != nil {
 		return fmt.Errorf("get data writer: %w", err)
 	}
-	defer wc.Close()
+
+	defer func() {
+		closeErr := wc.Close()
+		if closeErr != nil && err == nil {
+			err = errors.Wrap(closeErr, "failed to close WriteCloser")
+		}
+	}()
 
 	if _, err := wc.Write([]byte(msg.String())); err != nil {
 		return fmt.Errorf("write email body: %w", err)

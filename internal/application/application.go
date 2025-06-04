@@ -17,13 +17,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const shutdownTimeout = 5 * time.Second
+
 type Application struct {
 	Config         config.Config
 	Store          store.Storage
 	Router         *gin.Engine
 	server         *http.Server
 	WeatherService *weather.RemoteService
-	MailerService  *mailer.SmtpMailer
+	MailerService  *mailer.SMTPMailer
 }
 
 func (a *Application) Initialize() {
@@ -58,7 +60,7 @@ func (a *Application) Run() {
 	log.Println("Shutting down server...")
 	a.MailerService.Stop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	if err := a.server.Shutdown(ctx); err != nil {

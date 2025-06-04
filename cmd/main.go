@@ -16,7 +16,6 @@ import (
 )
 
 func main() {
-
 	dbName := env.GetString("DB_NAME", "weather")
 	dbPassword := env.GetString("DB_PASSWORD", "")
 	dbUser := env.GetString("DB_USER", "postgres")
@@ -57,13 +56,19 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	defer db.Close()
+
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			log.Panic(err)
+		}
+	}()
 
 	weatherServiceURL := env.GetString("WEATHER_SERVICE_URL", "http://api.weatherapi.com/v1/current.json")
-	weatherApiKey := env.GetString("WEATHER_API_KEY", "fake-api-key")
-	weatherService := weather.NewRemoteService(&weather.WeatherApi{
+	weatherAPIKey := env.GetString("WEATHER_API_KEY", "fake-api-key")
+	weatherService := weather.NewRemoteService(&weather.WeatherAPI{
 		BaseURL: weatherServiceURL,
-		ApiKey:  weatherApiKey,
+		APIKey:  weatherAPIKey,
 	})
 
 	smtpUser := env.GetString("SMTP_USER", "email")
