@@ -1,5 +1,7 @@
 include .env
 
+SHELL := /usr/bin/env bash
+
 BINARY_NAME=weather-service
 MAIN_PATH=./cmd/main.go
 
@@ -56,4 +58,4 @@ down:
 	@docker-compose down
 
 lint:
-	@golangci-lint run
+	@golangci-lint run --config <(curl https://raw.githubusercontent.com/fabl3ss/genesis-se-school-linter/refs/heads/main/.golangci.yaml)
