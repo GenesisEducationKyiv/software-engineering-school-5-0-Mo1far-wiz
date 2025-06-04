@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - master
   pull_request:
 
 permissions:
@@ -20,6 +19,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+      - name: Fetch remote golangci-lint config
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/fabl3ss/genesis-se-school-linter/refs/heads/main/.golangci.yaml \
+          -o .golangci.yml
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
