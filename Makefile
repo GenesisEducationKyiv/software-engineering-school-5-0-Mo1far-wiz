@@ -1,15 +1,14 @@
 include .env
 
-BINARY\_NAME=weather-service
-MAIN\_PATH=./cmd/main.go
+BINARY_NAME=weather-service
+MAIN_PATH=./cmd/main.go
 
-DB\_URL=postgres\://\$(DB\_USER):\$(DB\_PASSWORD)@\$(DB\_HOST):\$(DB\_PORT)/\$(DB\_NAME)?sslmode=\$(DB\_SSL\_MODE)
-MIGRATION\_PATH=\$(MIGRATION\_PATH)
+DB_URL=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)
 
 .PHONY: help build clean run migrate-up migrate-down db-up db-down up down
 
 help:
-	@echo "Usage: make \[command]"
+	@echo "Usage: make [command]"
 	@echo "Commands:"
 	@echo "  build         Build the application"
 	@echo "  run           Run the application"
@@ -27,18 +26,18 @@ clean:
 
 build:
 	@mkdir -p bin
-	@go build -o bin/\$(BINARY\_NAME) \$(MAIN\_PATH)
+	@go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
 
 run: build
-	@APP\_PORT=\$(APP\_PORT) /
-	DB\_URL="\$(DB\_URL)" /
-	./bin/\$(BINARY\_NAME)
+	@APP_PORT=$(APP_PORT) \
+	DB_URL="$(DB_URL)" \
+	./bin/$(BINARY_NAME)
 
 migrate-up:
-	@migrate -path=\$(MIGRATION\_PATH) -database="\$(DB\_URL)" up
+	@migrate -path=$(MIGRATION_PATH) -database="$(DB_URL)" up
 
 migrate-down:
-	@migrate -path=\$(MIGRATION\_PATH) -database="\$(DB\_URL)" down
+	@migrate -path=$(MIGRATION_PATH) -database="$(DB_URL)" down
 
 db-up:
 	@echo "Starting database container..."
