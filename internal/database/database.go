@@ -10,7 +10,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-const driver = "postgres"
+const (
+	driver      = "postgres"
+	pingTimeout = 5 * time.Second
+)
 
 func New(cfg config.DBConfig) (*sql.DB, error) {
 	db, err := sql.Open(driver, cfg.Addr)
@@ -27,7 +30,7 @@ func New(cfg config.DBConfig) (*sql.DB, error) {
 	}
 	db.SetConnMaxIdleTime(duration)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
 	defer cancel()
 
 	if err = db.PingContext(ctx); err != nil {

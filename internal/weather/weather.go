@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type WeatherApiResponse struct {
+type WeatherAPIResponse struct {
 	Current struct {
 		TempC     float32 `json:"temp_c"`
 		TempF     float32 `json:"temp_f"`
@@ -21,7 +21,7 @@ type WeatherApiResponse struct {
 	} `json:"current"`
 }
 
-func (wa WeatherApiResponse) GetWeatherModel() models.Weather {
+func (wa WeatherAPIResponse) GetWeatherModel() models.Weather {
 	return models.Weather{
 		Temperature: int(wa.Current.TempC),
 		Humidity:    wa.Current.Humidity,
@@ -29,21 +29,27 @@ func (wa WeatherApiResponse) GetWeatherModel() models.Weather {
 	}
 }
 
-type WeatherApi struct {
+type WeatherAPI struct {
 	BaseURL string
-	ApiKey  string
+	APIKey  string
 }
 
-func (wa *WeatherApi) GetCityWeather(city string) (models.Weather, error) {
-	reqURL := wa.BaseURL + "?key=" + wa.ApiKey + "&q=" + city
+func (wa *WeatherAPI) GetCityWeather(city string) (weather models.Weather, err error) {
+	reqURL := wa.BaseURL + "?key=" + wa.APIKey + "&q=" + city
 	resp, err := http.Get(reqURL)
 	if err != nil {
 		return models.Weather{}, errors.Wrap(err, "unable to send GET request to weather api")
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		closeErr := resp.Body.Close()
+		if closeErr != nil && err == nil {
+			err = errors.Wrap(closeErr, "failed to close response body")
+		}
+	}()
 
 	if resp.StatusCode == http.StatusBadRequest {
-		return models.Weather{}, errors.New(fmt.Sprintf("city not found: %s", city))
+		return models.Weather{}, fmt.Errorf("city not found: %s", city)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -51,11 +57,11 @@ func (wa *WeatherApi) GetCityWeather(city string) (models.Weather, error) {
 		return models.Weather{}, errors.Wrap(err, "unable to read request body")
 	}
 
-	var weather WeatherApiResponse
-	err = json.Unmarshal(body, &weather)
+	var weatherResp WeatherAPIResponse
+	err = json.Unmarshal(body, &weatherResp)
 	if err != nil {
 		return models.Weather{}, errors.Wrap(err, "unable to unmarshal request body")
 	}
 
-	return weather.GetWeatherModel(), nil
+	return weatherResp.GetWeatherModel(), nil
 }
