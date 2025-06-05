@@ -64,7 +64,7 @@ func (a *Application) Run() {
 	defer cancel()
 
 	if err := a.server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server shutdown error: %v", err)
+		log.Panicf("Server shutdown error: %v", err)
 	}
 
 	log.Println("Server exited properly")

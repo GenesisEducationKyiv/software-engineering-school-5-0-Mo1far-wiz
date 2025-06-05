@@ -1,11 +1,14 @@
 package weather
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"weather/internal/models"
+
+	joinErr "errors"
 
 	"github.com/pkg/errors"
 )
@@ -36,15 +39,26 @@ type WeatherAPI struct {
 
 func (wa *WeatherAPI) GetCityWeather(city string) (weather models.Weather, err error) {
 	reqURL := wa.BaseURL + "?key=" + wa.APIKey + "&q=" + city
-	resp, err := http.Get(reqURL)
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, reqURL, nil)
+	if err != nil {
+		return models.Weather{}, errors.Wrap(err, "unable to create new GET request to weather api")
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return models.Weather{}, errors.Wrap(err, "unable to send GET request to weather api")
 	}
 
 	defer func() {
 		closeErr := resp.Body.Close()
-		if closeErr != nil && err == nil {
-			err = errors.Wrap(closeErr, "failed to close response body")
+		if closeErr != nil {
+			closeErr = errors.Wrap(closeErr, "failed to close response body")
+			if err != nil {
+				err = joinErr.Join(err, closeErr)
+			} else {
+				err = closeErr
+			}
 		}
 	}()
 
