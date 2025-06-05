@@ -12,6 +12,8 @@ import (
 	"weather/internal/weather"
 
 	"github.com/pkg/errors"
+
+	joinErr "errors"
 )
 
 const (
@@ -235,7 +237,7 @@ func (m *SMTPMailer) SendEmail(to, subject, body string) (err error) {
 	msg.WriteString(body)
 
 	auth := smtp.PlainAuth("", m.User, m.Password, m.Host)
-	tlsConf := &tls.Config{InsecureSkipVerify: true, ServerName: m.Host}
+	tlsConf := &tls.Config{InsecureSkipVerify: false, ServerName: m.Host, MinVersion: tls.VersionTLS12}
 
 	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%s", m.Host, m.Port), tlsConf)
 	if err != nil {
@@ -244,8 +246,13 @@ func (m *SMTPMailer) SendEmail(to, subject, body string) (err error) {
 
 	defer func() {
 		closeErr := conn.Close()
-		if closeErr != nil && err == nil {
-			err = errors.Wrap(closeErr, "failed to close connection")
+		if closeErr != nil {
+			closeErr = errors.Wrap(closeErr, "failed to close connection")
+			if err != nil {
+				err = joinErr.Join(err, closeErr)
+			} else {
+				err = closeErr
+			}
 		}
 	}()
 
@@ -256,8 +263,13 @@ func (m *SMTPMailer) SendEmail(to, subject, body string) (err error) {
 
 	defer func() {
 		quitErr := client.Quit()
-		if quitErr != nil && err == nil {
-			err = errors.Wrap(quitErr, "failed to quit client")
+		if quitErr != nil {
+			quitErr = errors.Wrap(quitErr, "failed to quit client")
+			if err != nil {
+				err = joinErr.Join(err, quitErr)
+			} else {
+				err = quitErr
+			}
 		}
 	}()
 
@@ -278,8 +290,13 @@ func (m *SMTPMailer) SendEmail(to, subject, body string) (err error) {
 
 	defer func() {
 		closeErr := wc.Close()
-		if closeErr != nil && err == nil {
-			err = errors.Wrap(closeErr, "failed to close WriteCloser")
+		if closeErr != nil {
+			closeErr = errors.Wrap(closeErr, "failed to close write closer")
+			if err != nil {
+				err = joinErr.Join(err, closeErr)
+			} else {
+				err = closeErr
+			}
 		}
 	}()
 
