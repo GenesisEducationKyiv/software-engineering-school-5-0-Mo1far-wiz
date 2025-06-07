@@ -2,6 +2,6 @@ package handlers
 
 import "log"
 
-func logError(err error, message string) {
+func logErrorF(err error, message string) {
 	log.Printf("ERROR: %s: %v", message, err)
 }

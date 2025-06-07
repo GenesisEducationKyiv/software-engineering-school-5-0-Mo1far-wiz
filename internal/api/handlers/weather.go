@@ -29,7 +29,7 @@ func (h *WeatherHandler) CityWeather(c *gin.Context) {
 
 	weather, err := h.weatherService.GetCityWeather(city)
 	if err != nil {
-		logError(err, "on getting city weather")
+		logErrorF(err, "on getting city weather")
 		c.JSON(http.StatusBadRequest, "City not found")
 		return
 	}
