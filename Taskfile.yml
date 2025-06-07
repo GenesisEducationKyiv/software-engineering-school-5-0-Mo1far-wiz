@@ -65,9 +65,9 @@ tasks:
     desc: Builds project binary {{.BINARY_NAME}} and runs it.
     cmds:
       - task: build
-      - APP_PORT={{.APP_PORT}} \
-        DB_URL="{{.DB_URL}}" \
-        ./bin/{{.BINARY_NAME}}
+      - APP_PORT={{.APP_PORT}}
+      - DB_URL="{{.DB_URL}}"
+      - ./bin/{{.BINARY_NAME}}
     silent: true
     requires:
       vars: [APP_PORT, DB_URL, BINARY_NAME]
