@@ -10,8 +10,10 @@ import (
 
 const QueryTimeoutDuration = 1 * time.Second
 
-var ErrorNotFound = errors.New("resource not found")
-var ErrorAlreadyExists = errors.New("resource already exists")
+var (
+	ErrorNotFound      = errors.New("resource not found")
+	ErrorAlreadyExists = errors.New("resource already exists")
+)
 
 type Storage struct {
 	Subscription interface {

@@ -9,6 +9,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	pgAlreadyExistsCode       = "23505"
+	pgAlreadyExistsConstraint = "subscriptions_email_key"
+)
+
 type SubscriptionStore struct {
 	db *sql.DB
 }
@@ -35,7 +40,7 @@ func (ss *SubscriptionStore) Create(ctx context.Context, sub *models.Subscriptio
 	err := row.Scan(&sub.ID)
 	if err != nil {
 		if pgErr, ok := err.(*pq.Error); ok {
-			if pgErr.Code == "23505" && pgErr.Constraint == "subscriptions_email_key" {
+			if pgErr.Code == pgAlreadyExistsCode && pgErr.Constraint == pgAlreadyExistsConstraint {
 				return ErrorAlreadyExists
 			}
 		}

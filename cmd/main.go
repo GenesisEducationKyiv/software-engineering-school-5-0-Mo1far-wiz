@@ -54,13 +54,13 @@ func main() {
 
 	db, err := database.New(dbCfg)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	defer func() {
 		err := db.Close()
 		if err != nil {
-			log.Panic(err)
+			log.Fatal(err)
 		}
 	}()
 

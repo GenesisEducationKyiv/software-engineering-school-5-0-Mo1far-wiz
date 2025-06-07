@@ -3,6 +3,7 @@ package mailer
 import (
 	"crypto/tls"
 	"fmt"
+	"log"
 	"net/smtp"
 	"strings"
 	"sync"
@@ -178,7 +179,7 @@ func (m *SMTPMailer) sendDailyEmails() {
 	for _, sub := range subs {
 		weatherData, err := m.WeatherService.GetCityWeather(sub.City)
 		if err != nil {
-			fmt.Printf("weather fetch error for %q: %v\n", sub.City, err)
+			log.Printf("weather fetch error for %q: %v\n", sub.City, err)
 			continue
 		}
 		subject := fmt.Sprintf("Daily Weather for %s – %s", sub.City, time.Now().Format("2006-01-02"))
@@ -193,7 +194,7 @@ func (m *SMTPMailer) sendDailyEmails() {
 
 		go func(email, subj, msg string) {
 			if err := m.SendEmail(email, subj, msg); err != nil {
-				fmt.Printf("daily email error to %s: %v\n", email, err)
+				log.Printf("daily email error to %s: %v\n", email, err)
 			}
 		}(sub.Email, subject, body)
 	}
@@ -207,7 +208,7 @@ func (m *SMTPMailer) sendHourlyEmails() {
 	for _, sub := range subs {
 		weatherData, err := m.WeatherService.GetCityWeather(sub.City)
 		if err != nil {
-			fmt.Printf("weather fetch error for %q: %v\n", sub.City, err)
+			log.Printf("weather fetch error for %q: %v\n", sub.City, err)
 			continue
 		}
 		subject := fmt.Sprintf("Hourly Weather for %s – %s", sub.City, time.Now().Format("2006-01-02 15:04"))
@@ -222,7 +223,7 @@ func (m *SMTPMailer) sendHourlyEmails() {
 
 		go func(email, subj, msg string) {
 			if err := m.SendEmail(email, subj, msg); err != nil {
-				fmt.Printf("hourly email error to %s: %v\n", email, err)
+				log.Printf("hourly email error to %s: %v\n", email, err)
 			}
 		}(sub.Email, subject, body)
 	}

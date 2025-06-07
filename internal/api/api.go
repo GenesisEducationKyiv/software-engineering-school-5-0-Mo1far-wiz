@@ -17,13 +17,17 @@ func Mount(router *gin.Engine, storage store.Storage,
 
 	api := router.Group("/api")
 
-	weather := api.Group("/weather")
-	weather.Use(middleware.ExtractQuery("city"))
-	weather.GET("/", weatherHandler.CityWeather)
+	weatherGroup := api.Group("/weather")
+	weatherGroup.Use(middleware.ExtractQuery("city"))
+	{
+		weatherGroup.GET("/", weatherHandler.CityWeather)
+	}
 
-	subscription := api.Group("/")
-	subscription.Use(middleware.ExtractParam("token"))
-	subscription.POST("/subscribe", subscriptionHandler.Subscribe)
-	subscription.GET("/confirm/:token", subscriptionHandler.Confirm)
-	subscription.GET("/unsubscribe/:token", subscriptionHandler.Unsubscribe)
+	subscriptionGroup := api.Group("/")
+	subscriptionGroup.Use(middleware.ExtractParam("token"))
+	{
+		subscriptionGroup.POST("/subscribe", subscriptionHandler.Subscribe)
+		subscriptionGroup.GET("/confirm/:token", subscriptionHandler.Confirm)
+		subscriptionGroup.GET("/unsubscribe/:token", subscriptionHandler.Unsubscribe)
+	}
 }
