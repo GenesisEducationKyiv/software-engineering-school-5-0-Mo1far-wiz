@@ -47,7 +47,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 		Email:     req.Email,
 		City:      req.City,
 		Frequency: req.Frequency,
-		Token:     SHA256Token(req.Email),
+		Token:     SHA256Token(req.Email + req.City + req.Frequency),
 	}
 
 	err := s.store.Subscription.Create(c.Request.Context(), &subscription)
