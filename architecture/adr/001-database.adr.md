@@ -36,7 +36,6 @@ It is necessary to chose database for:
 - Simple JSON interactions.
 
 **Cons:**
-- Eventual consistency.
 - Can be too clumsy with complex transactions.
 - Fluid schema.
 
