@@ -56,7 +56,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 		if errors.Is(err, store.ErrorAlreadyExists) {
 			c.JSON(http.StatusConflict, "Email already subscribed")
 		} else {
-			c.JSON(http.StatusInternalServerError, "Invalid input")
+			c.JSON(http.StatusInternalServerError, "Can't create subscription")
 		}
 		return
 	}
@@ -64,7 +64,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 	err = s.mailerService.SendEmail(subscription.Email, "Your token", subscription.Token)
 	if err != nil {
 		logErrorF(err, "failed to send confirmation email")
-		c.JSON(http.StatusInternalServerError, "Invalid input")
+		c.JSON(http.StatusInternalServerError, "Can't send email")
 		return
 	}
 
@@ -81,7 +81,7 @@ func (s *SubscriptionHandler) Confirm(c *gin.Context) {
 	sub, err := s.store.Subscription.Confirm(c.Request.Context(), token)
 	if err != nil {
 		logErrorF(err, "cant confirm subscription")
-		c.JSON(http.StatusNotFound, "Invalid token")
+		c.JSON(http.StatusNotFound, "Cant confirm subscription")
 		return
 	}
 
@@ -105,7 +105,7 @@ func (s *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 	sub, err := s.store.Subscription.Unsubscribe(c.Request.Context(), token)
 	if err != nil {
 		logErrorF(err, "cant cancel subscription")
-		c.JSON(http.StatusNotFound, "Invalid token")
+		c.JSON(http.StatusNotFound, "Cant cancel subscription")
 		return
 	}
 

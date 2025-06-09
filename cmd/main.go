@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -76,12 +77,18 @@ func main() {
 	smtpHost := env.GetString("SMTP_HOST", "host")
 	smtpPort := env.GetString("SMTP_PORT", "port")
 
-	mailerSvc := mailer.New(smtpUser, smtpPassword, smtpHost, smtpPort, weatherService)
+	store := store.NewStorage(db)
+	subscriptions, err := store.Subscription.GetSubscribed(context.Background())
+	if err != nil {
+		log.Panic(err)
+	}
+
+	mailerSvc := mailer.New(smtpUser, smtpPassword, smtpHost, smtpPort, subscriptions, weatherService)
 
 	gin.SetMode(gin.ReleaseMode)
 	app := application.Application{
 		Config:         cfg,
-		Store:          store.NewStorage(db),
+		Store:          store,
 		Router:         gin.Default(),
 		WeatherService: weatherService,
 		MailerService:  mailerSvc,

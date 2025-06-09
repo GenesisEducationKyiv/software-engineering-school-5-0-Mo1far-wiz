@@ -12,9 +12,9 @@ import (
 	"weather/internal/models"
 	"weather/internal/weather"
 
-	"github.com/pkg/errors"
-
 	joinErr "errors"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -36,14 +36,21 @@ type SMTPMailer struct {
 	running  bool
 }
 
-func New(user, password, host, port string, weatherService *weather.RemoteService) *SMTPMailer {
+func New(user, password, host, port string,
+	subscriptions []models.Subscription, weatherService *weather.RemoteService) *SMTPMailer {
+	targets := make(map[string][]models.Subscription)
+
+	for _, sub := range subscriptions {
+		targets[sub.Frequency] = append(targets[sub.Frequency], sub)
+	}
+
 	return &SMTPMailer{
 		User:           user,
 		Password:       password,
 		Host:           host,
 		Port:           port,
 		WeatherService: weatherService,
-		targets:        make(map[string][]models.Subscription),
+		targets:        targets,
 		stopChan:       make(chan struct{}),
 	}
 }
@@ -242,24 +249,16 @@ func (m *SMTPMailer) SendEmail(to, subject, body string) (err error) {
 
 	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%s", m.Host, m.Port), tlsConf)
 	if err != nil {
-		return fmt.Errorf("connect SMTP: %w", err)
+		return errors.Wrap(err, "connect SMTP")
 	}
-
-	defer func() {
-		closeErr := conn.Close()
-		if closeErr != nil {
-			closeErr = errors.Wrap(closeErr, "failed to close connection")
-			if err != nil {
-				err = joinErr.Join(err, closeErr)
-			} else {
-				err = closeErr
-			}
-		}
-	}()
 
 	client, err := smtp.NewClient(conn, m.Host)
 	if err != nil {
-		return fmt.Errorf("new SMTP client: %w", err)
+		err = errors.Wrap(err, "new SMTP client")
+		if closeErr := conn.Close(); closeErr != nil {
+			err = joinErr.Join(err, closeErr)
+		}
+		return err
 	}
 
 	defer func() {
@@ -275,18 +274,18 @@ func (m *SMTPMailer) SendEmail(to, subject, body string) (err error) {
 	}()
 
 	if err := client.Auth(auth); err != nil {
-		return fmt.Errorf("SMTP auth: %w", err)
+		return errors.Wrap(err, "SMTP auth")
 	}
 	if err := client.Mail(m.User); err != nil {
-		return fmt.Errorf("set sender: %w", err)
+		return errors.Wrap(err, "set sender")
 	}
 	if err := client.Rcpt(to); err != nil {
-		return fmt.Errorf("set recipient: %w", err)
+		return errors.Wrap(err, "set recipient")
 	}
 
 	wc, err := client.Data()
 	if err != nil {
-		return fmt.Errorf("get data writer: %w", err)
+		return errors.Wrap(err, "get data writer")
 	}
 
 	defer func() {
@@ -302,7 +301,7 @@ func (m *SMTPMailer) SendEmail(to, subject, body string) (err error) {
 	}()
 
 	if _, err := wc.Write([]byte(msg.String())); err != nil {
-		return fmt.Errorf("write email body: %w", err)
+		return errors.Wrap(err, "write email body")
 	}
 	return nil
 }

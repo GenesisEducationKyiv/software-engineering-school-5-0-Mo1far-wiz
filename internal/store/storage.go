@@ -20,6 +20,7 @@ type Storage struct {
 		Create(context.Context, *models.Subscription) error
 		Confirm(ctx context.Context, token string) (models.Subscription, error)
 		Unsubscribe(ctx context.Context, token string) (models.Subscription, error)
+		GetSubscribed(ctx context.Context) ([]models.Subscription, error)
 	}
 }
 
