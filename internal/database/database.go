@@ -26,7 +26,7 @@ func New(cfg config.DBConfig) (*sql.DB, error) {
 
 	duration, err := time.ParseDuration(cfg.MaxIdleTime)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cant pass MaxIdleTime durations: %s", cfg.MaxIdleTime)
+		return nil, errors.Wrapf(err, "can't parse MaxIdleTime duration: %s", cfg.MaxIdleTime)
 	}
 	db.SetConnMaxIdleTime(duration)
 
