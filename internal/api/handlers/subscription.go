@@ -39,7 +39,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 	var req subscribeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logErrorF(err, "cant bind request to json")
-		c.JSON(http.StatusUnprocessableEntity, "Invalid input")
+		c.JSON(http.StatusBadRequest, "Invalid input")
 		return
 	}
 
@@ -54,9 +54,9 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 	if err != nil {
 		logErrorF(err, "cant create subscription")
 		if errors.Is(err, store.ErrorAlreadyExists) {
-			c.JSON(http.StatusBadRequest, "Email already subscribed")
+			c.JSON(http.StatusConflict, "Email already subscribed")
 		} else {
-			c.JSON(http.StatusBadRequest, "Invalid input")
+			c.JSON(http.StatusInternalServerError, "Invalid input")
 		}
 		return
 	}
@@ -64,7 +64,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 	err = s.mailerService.SendEmail(subscription.Email, "Your token", subscription.Token)
 	if err != nil {
 		logErrorF(err, "failed to send confirmation email")
-		c.JSON(http.StatusUnprocessableEntity, "Invalid input")
+		c.JSON(http.StatusInternalServerError, "Invalid input")
 		return
 	}
 
@@ -81,7 +81,7 @@ func (s *SubscriptionHandler) Confirm(c *gin.Context) {
 	sub, err := s.store.Subscription.Confirm(c.Request.Context(), token)
 	if err != nil {
 		logErrorF(err, "cant confirm subscription")
-		c.JSON(http.StatusBadRequest, "Invalid token")
+		c.JSON(http.StatusNotFound, "Invalid token")
 		return
 	}
 
@@ -105,7 +105,7 @@ func (s *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 	sub, err := s.store.Subscription.Unsubscribe(c.Request.Context(), token)
 	if err != nil {
 		logErrorF(err, "cant cancel subscription")
-		c.JSON(http.StatusBadRequest, "Invalid token")
+		c.JSON(http.StatusNotFound, "Invalid token")
 		return
 	}
 

@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type WeatherAPIResponse struct {
+type weatherAPIResponse struct {
 	Current struct {
 		TempC     float32 `json:"temp_c"`
 		TempF     float32 `json:"temp_f"`
@@ -24,7 +24,7 @@ type WeatherAPIResponse struct {
 	} `json:"current"`
 }
 
-func (wa WeatherAPIResponse) GetWeatherModel() models.Weather {
+func (wa weatherAPIResponse) GetWeatherModel() models.Weather {
 	return models.Weather{
 		Temperature: int(wa.Current.TempC),
 		Humidity:    wa.Current.Humidity,
@@ -71,7 +71,7 @@ func (wa *WeatherAPI) GetCityWeather(city string) (weather models.Weather, err e
 		return models.Weather{}, errors.Wrap(err, "unable to read request body")
 	}
 
-	var weatherResp WeatherAPIResponse
+	var weatherResp weatherAPIResponse
 	err = json.Unmarshal(body, &weatherResp)
 	if err != nil {
 		return models.Weather{}, errors.Wrap(err, "unable to unmarshal request body")
