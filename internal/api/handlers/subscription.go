@@ -63,7 +63,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 
 	err = s.mailerService.SendEmail(subscription.Email, "Your token", subscription.Token)
 	if err != nil {
-		logErrorF(err, "cant bind request to json")
+		logErrorF(err, "failed to send confirmation email")
 		c.JSON(http.StatusUnprocessableEntity, "Invalid input")
 		return
 	}

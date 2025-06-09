@@ -40,7 +40,7 @@ func (a *Application) Initialize() {
 	api.Mount(a.Router, a.Store, a.WeatherService, a.MailerService)
 }
 
-// very graceful very mindful
+// Run starts the HTTP server and handles graceful shutdown upon receiving termination signals.
 func (a *Application) Run() {
 	a.Initialize()
 

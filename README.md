@@ -8,7 +8,7 @@ curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install
 [more info see here](https://golangci-lint.run/welcome/install/)
 
 ## To run
-_dont forget running docker before_
+_don't forget running docker before_
 ```cmd
 make up
 ```

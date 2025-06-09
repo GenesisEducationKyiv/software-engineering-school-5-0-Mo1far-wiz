@@ -76,7 +76,7 @@ func main() {
 	smtpHost := env.GetString("SMTP_HOST", "host")
 	smtpPort := env.GetString("SMTP_PORT", "port")
 
-	mailer := mailer.New(smtpUser, smtpPassword, smtpHost, smtpPort, weatherService)
+	mailerSvc := mailer.New(smtpUser, smtpPassword, smtpHost, smtpPort, weatherService)
 
 	gin.SetMode(gin.ReleaseMode)
 	app := application.Application{
@@ -84,7 +84,7 @@ func main() {
 		Store:          store.NewStorage(db),
 		Router:         gin.Default(),
 		WeatherService: weatherService,
-		MailerService:  mailer,
+		MailerService:  mailerSvc,
 	}
 
 	app.Run()

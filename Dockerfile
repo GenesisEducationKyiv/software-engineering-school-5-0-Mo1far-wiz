@@ -1,4 +1,4 @@
-# S1
+# Build stage: Compiling the Go application
 FROM golang:1.24-alpine AS builder
 
 RUN apk add --no-cache git
@@ -17,7 +17,7 @@ RUN CGO_ENABLED=0 \
       -o /bin/weather-service \
       ./cmd/main.go
 
-# S2
+# Build stage: Copy Go build
 FROM alpine:3.19
 
 RUN apk add --no-cache ca-certificates tzdata
