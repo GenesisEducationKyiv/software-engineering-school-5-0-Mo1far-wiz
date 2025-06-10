@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS weather.subscriptions (
     frequency  weather.emails_frequency           NOT NULL,
     token      character varying(255)             NOT NULL UNIQUE,
     confirmed  boolean DEFAULT false              NOT NULL,
-    subscribed boolean DEFAULT false              NOT NULL,
 
     UNIQUE(email, city, frequency)
 );

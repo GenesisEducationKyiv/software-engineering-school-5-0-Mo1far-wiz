@@ -55,8 +55,7 @@ func (ss *SubscriptionStore) Create(ctx context.Context, sub *models.Subscriptio
 func (ss *SubscriptionStore) Confirm(ctx context.Context, token string) (models.Subscription, error) {
 	const query = `
         UPDATE weather.subscriptions
-        SET confirmed = true,
-            subscribed = true
+        SET confirmed = true
         WHERE token = $1
         RETURNING id, email, city, frequency, token;
     `
@@ -82,7 +81,7 @@ func (ss *SubscriptionStore) Confirm(ctx context.Context, token string) (models.
 func (ss *SubscriptionStore) Unsubscribe(ctx context.Context, token string) (models.Subscription, error) {
 	const query = `
         UPDATE weather.subscriptions
-        SET subscribed = false
+        SET confirmed = false
         WHERE token = $1
         RETURNING id, email, city, frequency, token;
     `
@@ -114,7 +113,7 @@ func (ss *SubscriptionStore) GetSubscribed(ctx context.Context) (subs []models.S
 			frequency,
 			token
 		FROM weather.subscriptions
-		WHERE subscribed = true;
+		WHERE confirmed = true;
 	`
 
 	rows, err := ss.db.QueryContext(ctx, query)
