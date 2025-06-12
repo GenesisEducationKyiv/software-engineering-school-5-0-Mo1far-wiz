@@ -45,7 +45,7 @@ It is necessary to choose routing framework for:
 **Pros:**
 - Part of Go standard library.
 - Full control over request lifecycle and performance tuning.
-- Depending binary footprint.
+- Variable binary size depending on implementation.
 
 **Cons:**
 - Manual routing setup (mux or custom logic needed).
