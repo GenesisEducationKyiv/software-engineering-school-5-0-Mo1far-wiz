@@ -13,6 +13,11 @@ It is necessary to chose database for:
 - Notifications settings (frequency, target city).
 - Confirmations and subscriptions history.
 
+Database should:
+- Have constrains (unique etc.).
+- Be able to use indexes for fast search.
+- Have an ability to auto generate IDs.
+
 ## Considered Options
 
 ### PostgreSQL
