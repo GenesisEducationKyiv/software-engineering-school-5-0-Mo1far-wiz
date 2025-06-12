@@ -16,7 +16,7 @@
 - User should be able to get current weather forecast for the specified city.
 - User should be able to subscribe an email to receive weather updates for a specific city with chosen frequency.
 - User should be able to confirms a subscription using the token sent in the confirmation email.
-- User should be able to unsubscribes an email from weather updates using the token sent in emails.
+- User should be able to unsubscribe an email from weather updates using the token sent in emails.
 - System should send emails with specified frequency (hourly, daily).
 
 #### 1.3 Non-Functions Requirements
