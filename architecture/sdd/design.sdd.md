@@ -4,17 +4,12 @@
 
 #### 1.1 Assumptions
 
-We assume that our system would be used as part of Back-end architecture or Standalone service and won't have their own UI or Web interface on it's own.
-
-We assume that developed system would be used only within Genesis SE School 5.0, but deployment and scalability options should be considered.
-
-Operational environment consists of Docker and Local environments.
-
-System would be build using Golang programming language (version 1.24), PostgreSQL database and WeatherAPI (free tier).
-
-We assume that we are able to use any existing infrastructure components (such as Load Balancer, Proxy, etc.)
-
-We assume that WeatherAPI rate limits and uptime problems won't be a problem, but proposed design should take them into account.
+- We assume that our system would be used as part of Back-end architecture or Standalone service and won't have their own UI or Web interface on it's own.
+- We assume that developed system would be used only within Genesis SE School 5.0, but deployment and scalability options should be considered.
+- Operational environment consists of Docker and Local environments.
+- System would be build using Golang programming language (version 1.24), PostgreSQL database and WeatherAPI (free tier).
+- We assume that we are able to use any existing infrastructure components (such as Load Balancer, Proxy, etc.)
+- We assume that WeatherAPI rate limits and uptime problems won't be a problem, but proposed design should take them into account.
 
 #### 1.2 Functional Requirements
 
@@ -27,9 +22,9 @@ We assume that WeatherAPI rate limits and uptime problems won't be a problem, bu
 #### 1.3 Non-Functions Requirements
 
 - **Availability**: 99.9% uptime.
-- **Scalability**: up to 1k users, 10k emails per day.
+- **Scalability**: up to 3k users, 30k emails per day.
 - **Delay**: <200ms for api requests; <15s for email delivery.
-- **Durability**: guaranteed messages delivery.
+- **Durability**: guaranteed 95.5% of messages delivery.
 - **Security**: subscription token is deterministic and irreversible; data validation.
 
 #### 1.4 Constraints
@@ -46,16 +41,16 @@ Our system constrained by:
 
 System should be able to be deployed using:
 - Cloud solutions (AWS, GCP, Azure)
-- Bare Metal (Windows server, Linux)
+- Bare Metal (Windows server, Linux server)
 
 ## 2. Load Evaluation
 
 #### 2.1 Users and Traffic
 
-- **Active users**: 1k.
+- **Active users**: 3k.
 - **Subscriptions per user**: 2 (avg.).
-- **API requests**: 500 RPS (peak).
-- **Messages**: 15k/day.
+- **API requests**: 1000 RPS (peak).
+- **Messages**: 30k/day.
 
 #### 2.2 Data
 
@@ -133,7 +128,11 @@ _Mailer_
 
 ## 4. Reliability & Resilience
 
-#### 4.1 Scaling
+#### 4.1. Service Level Objectives (SLOs)
+
+SLOs can be accessed [here](./slo.sdd.yaml).
+
+#### 4.2 Scaling
 
 For scaling we propose such approaches.
 
@@ -149,15 +148,15 @@ Vertical:
   - Move Mailer to a separate service
   - Add Queue (RabbitMQ) for Mailer
 
-#### 4.2 Scaled System Diagram
+#### 4.3 Scaled System Diagram
 
 ![schema](../images/scaled-architecture.png)
 
-### 4.3 External Service Fault Tolerance
+### 4.4 External Service Fault Tolerance
 
-- If the WeatherAPI endpoint becomes unavailable or returns errors, the Mailer service will **pause** all notifications.
+- If the WeatherAPI endpoint becomes unavailable or returns errors, the Mailer service will pause all notifications.
 - Unsent messages are enqueued in message queue (e.g. RabbitMQ/Kafka).
 - Once the WeatherAPI resumes normal operation, the queue is drained in FIFO order and delivery is retried automatically.
 
-### 4.4 Message Delivery Guarantees
+### 4.5 Message Delivery Guarantees
 - We do not guarantee that messages will be delivered in case of SMTP server fault.

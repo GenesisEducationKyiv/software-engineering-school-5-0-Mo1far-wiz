@@ -1,0 +1,41 @@
+service_level_objectives:
+  # SLOs for the user-facing API endpoints (GET /weather, POST /subscribe, etc.)
+  api_service:
+    availability:
+      name: api_availability
+      description: Percentage of API requests that complete successfully.
+      objective: "99.9%"
+      sli: "(count of non-5xx responses / total valid requests) * 100"
+    latency:
+      name: api_latency
+      description: 95% of API requests must complete in under 200ms.
+      objective: "95%"
+      sli: "percentile(api_request_duration_seconds, 95) < 0.2s"
+
+  # SLOs for the background email sending process (Cron Job)
+  mailer_service:
+    success:
+      name: scheduled_job_success
+      description: Percentage of scheduled jobs that start on time and successfully process all emails.
+      objective: "95.5%"
+      sli: "(count of successful jobs / total scheduled jobs) * 100"
+    latency:
+      name: mailer_job_duration
+      description: 95% of mailer jobs must complete in under 15 seconds.
+      objective: "95%"
+      sli: "percentile(mailer_job_duration_seconds, 95) < 15s"
+
+  dependencies:
+    - name: weather_api
+      provider: OpenWeatherMap (or similar)
+      documented_slo:
+        availability: "95.5%"
+      impact: Critical for data freshness in sent emails.
+      mitigation: Retry -> Use 24h stale cache w/ disclaimer -> Fail job.
+
+    - name: email_smtp_relay
+      provider: External / SendGrid
+      documented_slo:
+        availability: "99.99%"
+      impact: Critical for the final email delivery step.
+      mitigation: Retry -> Fail job & alert.
