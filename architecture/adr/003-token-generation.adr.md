@@ -8,7 +8,7 @@
 
 ## Context
 
-It is necessary to chose algorithm for Token generation. It should be:
+It is necessary to choose an algorithm for Token generation. It should be:
 - Deterministic.
 - With low or no Collision Rate.
 - Efficient.
