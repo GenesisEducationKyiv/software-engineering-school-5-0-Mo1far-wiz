@@ -8,7 +8,7 @@
 
 ## Context
 
-It is necessary to chose database for:
+It is necessary to choose database for:
 - Saving info about user and their subscriptions.
 - Notifications settings (frequency, target city).
 - Confirmations and subscriptions history.
