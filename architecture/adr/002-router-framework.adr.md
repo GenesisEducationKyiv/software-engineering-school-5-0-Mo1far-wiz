@@ -8,7 +8,7 @@
 
 ## Context
 
-It is necessary to chose routing framework for:
+It is necessary to choose routing framework for:
 - Running server and accepting connections.
 - Handling requests and send responses.
 - Maintaining clean, easy-to-use and understand code.
