@@ -21,7 +21,7 @@
 
 #### 1.3 Non-Functions Requirements
 
-- **Availability**: 99.9% uptime.
+- **Availability**: 95.5% uptime.
 - **Scalability**: up to 3k users, 30k emails per day.
 - **Delay**: <200ms for api requests; <15s for email delivery.
 - **Durability**: guaranteed 95.5% of messages delivery.
