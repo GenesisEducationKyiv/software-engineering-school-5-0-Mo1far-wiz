@@ -132,7 +132,7 @@ Horizontal:
 - Service
   - Add Replicas
 
-Vertical:
+Decomposition:
 - Mailer
   - Move Mailer to a separate service
   - Add Queue (RabbitMQ) for Mailer
