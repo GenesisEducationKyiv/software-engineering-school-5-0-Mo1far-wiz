@@ -86,33 +86,22 @@ The system consists of such components:
 ```
 GET  /api/weather?city={city}
 ```
-Description: Fetch current weather for the specified city.  
-Query parameters:
-- city (string, required)
-
+Description: Fetch current weather for the specified city.
 
 ```
 POST /api/subscribe
 ```
-Description: Create a new subscription and send a confirmation email.  
-Request body (JSON):
-- email (string, required)
-- city (string, required)
-- frequency (string, “hourly” or “daily”, required)
+Description: Create a new subscription and send a confirmation email.
 
 ```
 GET  /api/confirm/{token}
 ```
-Description: Confirm a pending subscription.  
-Path parameters:
-- token (string, required)
+Description: Confirm a pending subscription.
 
 ```
 GET  /api/unsubscribe/{token}
 ```
-Description: Unsubscribe an email from further updates.  
-Path parameters:
-- token (string, required)
+Description: Unsubscribe an email from further updates.
 
 #### 3.4 Sequence Diagrams
 
