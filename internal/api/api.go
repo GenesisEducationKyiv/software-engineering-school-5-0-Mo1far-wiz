@@ -8,8 +8,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Mount(router *gin.Engine, storage handlers.SubscriptionStore,
-	weatherService *weather.RemoteService, mailerService handlers.MailerService) {
+func Mount(
+	router *gin.Engine,
+	storage handlers.SubscriptionStore,
+	weatherService *weather.RemoteService,
+	mailerService handlers.MailerService,
+) {
+	gin.SetMode(gin.ReleaseMode)
+
 	weatherHandler := handlers.NewWeatherHandler(weatherService)
 	subscriptionHandler := handlers.NewSubscriptionHandler(storage, mailerService)
 
