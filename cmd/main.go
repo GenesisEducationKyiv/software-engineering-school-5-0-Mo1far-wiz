@@ -87,6 +87,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	err = database.ValidateConnection(db)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	store := store.NewStorage(db)
 
 	defer func() {
@@ -102,7 +107,6 @@ func main() {
 	smtpConfig := getSMTPConfig()
 	mailerService := mailer.New(smtpConfig, store.Mailer, weatherService)
 
-	gin.SetMode(gin.ReleaseMode)
 	app := application.Application{
 		Config:         appConfig,
 		Store:          store,

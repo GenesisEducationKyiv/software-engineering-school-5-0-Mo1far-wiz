@@ -30,12 +30,12 @@ func New(cfg config.DBConfig) (*sql.DB, error) {
 	}
 	db.SetConnMaxIdleTime(duration)
 
+	return db, nil
+}
+
+func ValidateConnection(db *sql.DB) error {
 	ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
 	defer cancel()
 
-	if err = db.PingContext(ctx); err != nil {
-		return nil, errors.Wrap(err, "ping wasn't successful")
-	}
-
-	return db, nil
+	return errors.Wrap(db.PingContext(ctx), "ping wasn't successful")
 }
