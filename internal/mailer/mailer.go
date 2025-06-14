@@ -1,6 +1,7 @@
 package mailer
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"weather/internal/config"
 	"weather/internal/models"
 	"weather/internal/weather"
 
@@ -20,6 +22,10 @@ import (
 const (
 	Day = 24 * time.Hour
 )
+
+type SubscribedStore interface {
+	GetSubscribed(ctx context.Context) ([]models.Subscription, error)
+}
 
 type SMTPMailer struct {
 	User           string
@@ -36,8 +42,13 @@ type SMTPMailer struct {
 	running  bool
 }
 
-func New(user, password, host, port string,
-	subscriptions []models.Subscription, weatherService *weather.RemoteService) *SMTPMailer {
+func New(config config.SMTPConfig,
+	store SubscribedStore, weatherService *weather.RemoteService) *SMTPMailer {
+	subscriptions, err := store.GetSubscribed(context.Background())
+	if err != nil {
+		log.Panic(err)
+	}
+
 	targets := make(map[string][]models.Subscription)
 
 	for _, sub := range subscriptions {
@@ -45,10 +56,10 @@ func New(user, password, host, port string,
 	}
 
 	return &SMTPMailer{
-		User:           user,
-		Password:       password,
-		Host:           host,
-		Port:           port,
+		User:           config.SMTPUser,
+		Password:       config.SMTPPassword,
+		Host:           config.SMTPHost,
+		Port:           config.SMTPPort,
 		WeatherService: weatherService,
 		targets:        targets,
 		stopChan:       make(chan struct{}),

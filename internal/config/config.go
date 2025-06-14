@@ -4,9 +4,8 @@ import (
 	"time"
 )
 
-type Config struct {
+type ApplicationConfig struct {
 	Addr         string
-	DB           DBConfig
 	WriteTimeout time.Duration
 	ReadTimeout  time.Duration
 	IdleTimeout  time.Duration
@@ -17,4 +16,16 @@ type DBConfig struct {
 	MaxOpenConns int
 	MaxIdleConns int
 	MaxIdleTime  string
+}
+
+type WeatherAPIConfig struct {
+	ServiceBaseURL string
+	APIKey         string
+}
+
+type SMTPConfig struct {
+	SMTPUser     string
+	SMTPPassword string
+	SMTPHost     string
+	SMTPPort     string
 }

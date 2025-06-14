@@ -20,7 +20,7 @@ import (
 const shutdownTimeout = 5 * time.Second
 
 type Application struct {
-	Config         config.Config
+	Config         config.ApplicationConfig
 	Store          store.Storage
 	Router         *gin.Engine
 	server         *http.Server
@@ -37,7 +37,7 @@ func (a *Application) Initialize() {
 		IdleTimeout:  a.Config.IdleTimeout,
 	}
 
-	api.Mount(a.Router, a.Store, a.WeatherService, a.MailerService)
+	api.Mount(a.Router, a.Store.Subscription, a.WeatherService, a.MailerService)
 }
 
 // Run starts the HTTP server and handles graceful shutdown upon receiving termination signals.

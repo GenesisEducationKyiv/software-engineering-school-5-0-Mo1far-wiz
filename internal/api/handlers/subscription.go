@@ -1,16 +1,37 @@
 package handlers
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"net/http"
-	"weather/internal/mailer"
 	"weather/internal/models"
-	"weather/internal/store"
+	"weather/internal/srverrors"
 
 	"github.com/gin-gonic/gin"
 )
+
+type SubscriptionStore interface {
+	Create(context.Context, *models.Subscription) error
+	Confirm(ctx context.Context, token string) (models.Subscription, error)
+	Unsubscribe(ctx context.Context, token string) (models.Subscription, error)
+}
+
+type MailerService interface {
+	SendEmail(to, subject, body string) (err error)
+
+	AddDailyTarget(sub models.Subscription)
+	AddHourlyTarget(sub models.Subscription)
+
+	RemoveDailyTarget(email string)
+	RemoveHourlyTarget(email string)
+}
+
+type SubscriptionHandler struct {
+	store         SubscriptionStore
+	mailerService MailerService
+}
 
 type subscribeRequest struct {
 	Email     string `json:"email"`
@@ -18,17 +39,12 @@ type subscribeRequest struct {
 	Frequency string `json:"frequency"`
 }
 
-func SHA256Token(input string) string {
+func sha256Token(input string) string {
 	sum := sha256.Sum256([]byte(input))
 	return hex.EncodeToString(sum[:])
 }
 
-type SubscriptionHandler struct {
-	store         store.Storage
-	mailerService *mailer.SMTPMailer
-}
-
-func NewSubscriptionHandler(store store.Storage, mailerService *mailer.SMTPMailer) *SubscriptionHandler {
+func NewSubscriptionHandler(store SubscriptionStore, mailerService MailerService) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		store:         store,
 		mailerService: mailerService,
@@ -47,13 +63,13 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 		Email:     req.Email,
 		City:      req.City,
 		Frequency: req.Frequency,
-		Token:     SHA256Token(req.Email + req.City + req.Frequency),
+		Token:     sha256Token(req.Email + req.City + req.Frequency),
 	}
 
-	err := s.store.Subscription.Create(c.Request.Context(), &subscription)
+	err := s.store.Create(c.Request.Context(), &subscription)
 	if err != nil {
 		logErrorF(err, "cant create subscription")
-		if errors.Is(err, store.ErrorAlreadyExists) {
+		if errors.Is(err, srverrors.ErrorAlreadyExists) {
 			c.JSON(http.StatusConflict, "Email already subscribed")
 		} else {
 			c.JSON(http.StatusInternalServerError, "Can't create subscription")
@@ -78,7 +94,7 @@ func (s *SubscriptionHandler) Confirm(c *gin.Context) {
 		return
 	}
 
-	sub, err := s.store.Subscription.Confirm(c.Request.Context(), token)
+	sub, err := s.store.Confirm(c.Request.Context(), token)
 	if err != nil {
 		logErrorF(err, "cant confirm subscription")
 		c.JSON(http.StatusNotFound, "Cant confirm subscription")
@@ -102,7 +118,7 @@ func (s *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 		return
 	}
 
-	sub, err := s.store.Subscription.Unsubscribe(c.Request.Context(), token)
+	sub, err := s.store.Unsubscribe(c.Request.Context(), token)
 	if err != nil {
 		logErrorF(err, "cant cancel subscription")
 		c.JSON(http.StatusNotFound, "Cant cancel subscription")
