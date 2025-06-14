@@ -3,16 +3,14 @@ package api
 import (
 	"weather/internal/api/handlers"
 	"weather/internal/api/middleware"
-	"weather/internal/mailer"
-	"weather/internal/store"
 	"weather/internal/weather"
 
 	"github.com/gin-gonic/gin"
 )
 
-func Mount(router *gin.Engine, storage store.Storage,
-	weatherService *weather.RemoteService, mailerService *mailer.SMTPMailer) {
-	weatherHandler := handlers.NewWeatherHandler(storage, weatherService)
+func Mount(router *gin.Engine, storage handlers.SubscriptionStore,
+	weatherService *weather.RemoteService, mailerService handlers.MailerService) {
+	weatherHandler := handlers.NewWeatherHandler(weatherService)
 	subscriptionHandler := handlers.NewSubscriptionHandler(storage, mailerService)
 
 	api := router.Group("/api")
