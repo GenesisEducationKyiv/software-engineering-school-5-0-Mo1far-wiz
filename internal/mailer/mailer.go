@@ -3,32 +3,17 @@ package mailer
 import (
 	"context"
 	"crypto/tls"
+	joinErr "errors"
 	"fmt"
 	"log"
 	"net/smtp"
 	"strings"
-	"sync"
 	"time"
-
-	"weather/internal/config"
 	"weather/internal/models"
 	"weather/internal/weather"
 
-	joinErr "errors"
-
 	"github.com/pkg/errors"
 )
-
-const (
-	Day                    = 24 * time.Hour
-	SendEmailDailyTimeout  = time.Minute * 15
-	SendEmailHourlyTimeout = time.Minute * 15
-	LoadTimeoutDuration    = time.Second * 5
-)
-
-type MailerStore interface {
-	GetSubscribed(ctx context.Context) ([]models.Subscription, error)
-}
 
 type SMTPMailer struct {
 	User           string
@@ -36,187 +21,20 @@ type SMTPMailer struct {
 	Host           string
 	Port           string
 	WeatherService *weather.RemoteService
-
-	mx      sync.RWMutex
-	targets map[string][]models.Subscription
-
-	stopChan chan struct{}
-	wg       sync.WaitGroup
-	running  bool
 }
 
-func New(config config.SMTPConfig, weatherService *weather.RemoteService) *SMTPMailer {
-	return &SMTPMailer{
-		User:           config.SMTPUser,
-		Password:       config.SMTPPassword,
-		Host:           config.SMTPHost,
-		Port:           config.SMTPPort,
-		WeatherService: weatherService,
-		targets:        nil,
-		stopChan:       make(chan struct{}),
-	}
-}
-
-func (m *SMTPMailer) LoadTargets(ctx context.Context, store MailerStore) error {
-	subscriptions, err := store.GetSubscribed(ctx)
-	if err != nil {
-		return errors.Wrap(err, "unable to load Mailer targets")
-	}
-
-	targets := make(map[string][]models.Subscription)
-
+func (m *SMTPMailer) sendEmails(
+	ctx context.Context,
+	subscriptions []models.Subscription,
+	subjectPrefix string,
+) {
 	for _, sub := range subscriptions {
-		targets[sub.Frequency] = append(targets[sub.Frequency], sub)
-	}
-
-	m.targets = targets
-
-	return nil
-}
-
-func (m *SMTPMailer) AddDailyTarget(sub models.Subscription) {
-	m.mx.Lock()
-	defer m.mx.Unlock()
-
-	for _, existing := range m.targets[models.Daily] {
-		if existing.Email == sub.Email {
-			return
-		}
-	}
-	m.targets[models.Daily] = append(m.targets[models.Daily], sub)
-}
-
-func (m *SMTPMailer) AddHourlyTarget(sub models.Subscription) {
-	m.mx.Lock()
-	defer m.mx.Unlock()
-
-	for _, existing := range m.targets[models.Hourly] {
-		if existing.Email == sub.Email {
-			return
-		}
-	}
-	m.targets[models.Hourly] = append(m.targets[models.Hourly], sub)
-}
-
-func (m *SMTPMailer) RemoveDailyTarget(email string) {
-	m.mx.Lock()
-	defer m.mx.Unlock()
-
-	subs := m.targets[models.Daily]
-	for i, sub := range subs {
-		if sub.Email == email {
-			subs[i] = subs[len(subs)-1]
-			m.targets[models.Daily] = subs[:len(subs)-1]
-			return
-		}
-	}
-}
-
-func (m *SMTPMailer) RemoveHourlyTarget(email string) {
-	m.mx.Lock()
-	defer m.mx.Unlock()
-
-	subs := m.targets[models.Hourly]
-	for i, sub := range subs {
-		if sub.Email == email {
-			subs[i] = subs[len(subs)-1]
-			m.targets[models.Hourly] = subs[:len(subs)-1]
-			return
-		}
-	}
-}
-
-func (m *SMTPMailer) Start() {
-	m.mx.Lock()
-	if m.running {
-		m.mx.Unlock()
-		return
-	}
-	m.running = true
-	m.stopChan = make(chan struct{})
-	m.mx.Unlock()
-
-	// Daily
-	m.wg.Add(1)
-	go func() {
-		defer m.wg.Done()
-		now := time.Now()
-		nextMidnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
-		select {
-		case <-time.After(nextMidnight.Sub(now)):
-		case <-m.stopChan:
-			return
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), SendEmailDailyTimeout)
-		m.sendDailyEmails(ctx)
-		cancel()
-		ticker := time.NewTicker(Day)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				ctx, cancel := context.WithTimeout(context.Background(), SendEmailDailyTimeout)
-				m.sendDailyEmails(ctx)
-				cancel()
-			case <-m.stopChan:
-				return
-			}
-		}
-	}()
-
-	// Hourly
-	m.wg.Add(1)
-	go func() {
-		defer m.wg.Done()
-		now := time.Now()
-		nextHour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, 0, 0, 0, now.Location())
-		select {
-		case <-time.After(nextHour.Sub(now)):
-		case <-m.stopChan:
-			return
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), SendEmailHourlyTimeout)
-		m.sendHourlyEmails(ctx)
-		cancel()
-		ticker := time.NewTicker(time.Hour)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				ctx, cancel := context.WithTimeout(context.Background(), SendEmailHourlyTimeout)
-				m.sendHourlyEmails(ctx)
-				cancel()
-			case <-m.stopChan:
-				return
-			}
-		}
-	}()
-}
-
-func (m *SMTPMailer) Stop() {
-	m.mx.Lock()
-	if !m.running {
-		m.mx.Unlock()
-		return
-	}
-	m.running = false
-	close(m.stopChan)
-	m.mx.Unlock()
-	m.wg.Wait()
-}
-
-func (m *SMTPMailer) sendDailyEmails(ctx context.Context) {
-	m.mx.RLock()
-	subs := append([]models.Subscription(nil), m.targets[models.Daily]...)
-	m.mx.RUnlock()
-
-	for _, sub := range subs {
 		weatherData, err := m.WeatherService.GetCityWeather(ctx, sub.City)
 		if err != nil {
 			log.Printf("weather fetch error for %q: %v\n", sub.City, err)
 			continue
 		}
-		subject := fmt.Sprintf("Daily Weather for %s – %s", sub.City, time.Now().Format("2006-01-02"))
+		subject := fmt.Sprintf(subjectPrefix+" for %s – %s", sub.City, time.Now().Format("2006-01-02"))
 		body := fmt.Sprintf(
 			"Hello %s,\n\nCurrent weather in %s:\n"+
 				"- %s\n- Temperature: %d°C\n- Humidity: %d%%\n",
@@ -229,35 +47,6 @@ func (m *SMTPMailer) sendDailyEmails(ctx context.Context) {
 		go func(email, subj, msg string) {
 			if err := m.SendEmail(email, subj, msg); err != nil {
 				log.Printf("daily email error to %s: %v\n", email, err)
-			}
-		}(sub.Email, subject, body)
-	}
-}
-
-func (m *SMTPMailer) sendHourlyEmails(ctx context.Context) {
-	m.mx.RLock()
-	subs := append([]models.Subscription(nil), m.targets[models.Hourly]...)
-	m.mx.RUnlock()
-
-	for _, sub := range subs {
-		weatherData, err := m.WeatherService.GetCityWeather(ctx, sub.City)
-		if err != nil {
-			log.Printf("weather fetch error for %q: %v\n", sub.City, err)
-			continue
-		}
-		subject := fmt.Sprintf("Hourly Weather for %s – %s", sub.City, time.Now().Format("2006-01-02 15:04"))
-		body := fmt.Sprintf(
-			"Hello %s,\n\nCurrent weather in %s:\n"+
-				"- %s\n- Temperature: %d°C\n- Humidity: %d%%\n",
-			sub.Email, sub.City,
-			weatherData.Description,
-			weatherData.Temperature,
-			weatherData.Humidity,
-		)
-
-		go func(email, subj, msg string) {
-			if err := m.SendEmail(email, subj, msg); err != nil {
-				log.Printf("hourly email error to %s: %v\n", email, err)
 			}
 		}(sub.Email, subject, body)
 	}

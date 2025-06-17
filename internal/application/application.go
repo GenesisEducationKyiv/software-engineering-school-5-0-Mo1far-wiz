@@ -25,7 +25,7 @@ type Application struct {
 	Router         *gin.Engine
 	server         *http.Server
 	WeatherService *weather.RemoteService
-	MailerService  *mailer.SMTPMailer
+	MailerService  *mailer.Manager
 }
 
 func (a *Application) Initialize() {
@@ -37,7 +37,13 @@ func (a *Application) Initialize() {
 		IdleTimeout:  a.Config.IdleTimeout,
 	}
 
-	api.Mount(a.Router, a.Store.Subscription, a.WeatherService, a.MailerService, a.MailerService)
+	api.Mount(
+		a.Router,
+		a.Store.Subscription,
+		a.WeatherService,
+		&a.MailerService.Mailer,
+		&a.MailerService.Targets,
+	)
 }
 
 // Run starts the HTTP server and handles graceful shutdown upon receiving termination signals.
