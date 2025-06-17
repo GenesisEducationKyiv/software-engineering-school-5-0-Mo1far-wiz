@@ -18,9 +18,11 @@ type SubscriptionStore interface {
 	Unsubscribe(ctx context.Context, token string) (models.Subscription, error)
 }
 
-type MailerService interface {
+type EmailSender interface {
 	SendEmail(to, subject, body string) (err error)
+}
 
+type SubscriptionTargetManager interface {
 	AddDailyTarget(sub models.Subscription)
 	AddHourlyTarget(sub models.Subscription)
 
@@ -30,7 +32,8 @@ type MailerService interface {
 
 type SubscriptionHandler struct {
 	store         SubscriptionStore
-	mailerService MailerService
+	targetManager SubscriptionTargetManager
+	emailSender   EmailSender
 }
 
 type subscribeRequest struct {
@@ -53,10 +56,15 @@ func validateToken(c *gin.Context) (string, error) {
 	return token, nil
 }
 
-func NewSubscriptionHandler(store SubscriptionStore, mailerService MailerService) *SubscriptionHandler {
+func NewSubscriptionHandler(
+	store SubscriptionStore,
+	emailSender EmailSender,
+	targetManager SubscriptionTargetManager,
+) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		store:         store,
-		mailerService: mailerService,
+		emailSender:   emailSender,
+		targetManager: targetManager,
 	}
 }
 
@@ -77,7 +85,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 
 	err := s.store.Create(c.Request.Context(), &subscription)
 	if err != nil {
-		logErrorF(err, "cant create subscription")
+		logErrorF(err, "can't create subscription")
 		if errors.Is(err, srverrors.ErrorAlreadyExists) {
 			c.JSON(http.StatusConflict, "Email already subscribed")
 		} else {
@@ -86,7 +94,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 		return
 	}
 
-	err = s.mailerService.SendEmail(subscription.Email, "Your token", subscription.Token)
+	err = s.emailSender.SendEmail(subscription.Email, "Your token", subscription.Token)
 	if err != nil {
 		logErrorF(err, "failed to send confirmation email")
 		c.JSON(http.StatusInternalServerError, "Can't send email")
@@ -105,16 +113,16 @@ func (s *SubscriptionHandler) Confirm(c *gin.Context) {
 
 	sub, err := s.store.Confirm(c.Request.Context(), token)
 	if err != nil {
-		logErrorF(err, "cant confirm subscription")
-		c.JSON(http.StatusNotFound, "Cant confirm subscription")
+		logErrorF(err, "can't confirm subscription")
+		c.JSON(http.StatusNotFound, "Can't confirm subscription")
 		return
 	}
 
 	switch sub.Frequency {
 	case models.Hourly:
-		s.mailerService.AddHourlyTarget(sub)
+		s.targetManager.AddHourlyTarget(sub)
 	case models.Daily:
-		s.mailerService.AddDailyTarget(sub)
+		s.targetManager.AddDailyTarget(sub)
 	}
 
 	c.JSON(http.StatusOK, "Subscription confirmed successfully")
@@ -129,16 +137,16 @@ func (s *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 
 	sub, err := s.store.Unsubscribe(c.Request.Context(), token)
 	if err != nil {
-		logErrorF(err, "cant cancel subscription")
-		c.JSON(http.StatusNotFound, "Cant cancel subscription")
+		logErrorF(err, "can't cancel subscription")
+		c.JSON(http.StatusNotFound, "Can't cancel subscription")
 		return
 	}
 
 	switch sub.Frequency {
 	case models.Hourly:
-		s.mailerService.RemoveHourlyTarget(sub.Email)
+		s.targetManager.RemoveHourlyTarget(sub.Email)
 	case models.Daily:
-		s.mailerService.RemoveDailyTarget(sub.Email)
+		s.targetManager.RemoveDailyTarget(sub.Email)
 	}
 
 	c.JSON(http.StatusOK, "Unsubscribed successfully")

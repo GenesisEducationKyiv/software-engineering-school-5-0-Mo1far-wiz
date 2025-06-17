@@ -12,12 +12,13 @@ func Mount(
 	router *gin.Engine,
 	storage handlers.SubscriptionStore,
 	weatherService *weather.RemoteService,
-	mailerService handlers.MailerService,
+	emailSender handlers.EmailSender,
+	targetManager handlers.SubscriptionTargetManager,
 ) {
 	gin.SetMode(gin.ReleaseMode)
 
 	weatherHandler := handlers.NewWeatherHandler(weatherService)
-	subscriptionHandler := handlers.NewSubscriptionHandler(storage, mailerService)
+	subscriptionHandler := handlers.NewSubscriptionHandler(storage, emailSender, targetManager)
 
 	api := router.Group("/api")
 
