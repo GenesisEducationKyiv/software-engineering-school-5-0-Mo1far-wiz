@@ -44,6 +44,15 @@ func sha256Token(input string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+func validateToken(c *gin.Context) (string, error) {
+	token := c.GetString("token")
+	if token == "" || token == ":token" {
+		return "", srverrors.ErrorTokenNotFound
+	}
+
+	return token, nil
+}
+
 func NewSubscriptionHandler(store SubscriptionStore, mailerService MailerService) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		store:         store,
@@ -88,9 +97,9 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 }
 
 func (s *SubscriptionHandler) Confirm(c *gin.Context) {
-	token := c.GetString("token")
-	if token == "" || token == ":token" {
-		c.JSON(http.StatusNotFound, "Token not found")
+	token, err := validateToken(c)
+	if err != nil {
+		c.JSON(http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -112,9 +121,9 @@ func (s *SubscriptionHandler) Confirm(c *gin.Context) {
 }
 
 func (s *SubscriptionHandler) Unsubscribe(c *gin.Context) {
-	token := c.GetString("token")
-	if token == "" || token == ":token" {
-		c.JSON(http.StatusNotFound, "Token not found")
+	token, err := validateToken(c)
+	if err != nil {
+		c.JSON(http.StatusNotFound, err.Error())
 		return
 	}
 
