@@ -41,8 +41,8 @@ func (a *Application) Initialize() {
 		a.Router,
 		a.Store.Subscription,
 		a.WeatherService,
-		&a.MailerService.Mailer,
-		&a.MailerService.Targets,
+		a.MailerService.Mailer,
+		a.MailerService.Targets,
 	)
 }
 

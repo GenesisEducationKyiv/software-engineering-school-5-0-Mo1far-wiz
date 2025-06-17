@@ -44,53 +44,27 @@ func (m *TargetManager) GetTargets(subscriptionType string) []models.Subscriptio
 	return copied
 }
 
-func (m *TargetManager) AddDailyTarget(sub models.Subscription) {
+func (m *TargetManager) AddTarget(sub models.Subscription) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
-	for _, existing := range m.targets[models.Daily] {
+	for _, existing := range m.targets[sub.Frequency] {
 		if existing.Email == sub.Email {
 			return
 		}
 	}
-	m.targets[models.Daily] = append(m.targets[models.Daily], sub)
+	m.targets[sub.Frequency] = append(m.targets[sub.Frequency], sub)
 }
 
-func (m *TargetManager) AddHourlyTarget(sub models.Subscription) {
+func (m *TargetManager) RemoveTarget(email string, frequency string) {
 	m.mx.Lock()
 	defer m.mx.Unlock()
 
-	for _, existing := range m.targets[models.Hourly] {
-		if existing.Email == sub.Email {
-			return
-		}
-	}
-	m.targets[models.Hourly] = append(m.targets[models.Hourly], sub)
-}
-
-func (m *TargetManager) RemoveDailyTarget(email string) {
-	m.mx.Lock()
-	defer m.mx.Unlock()
-
-	subs := m.targets[models.Daily]
+	subs := m.targets[frequency]
 	for i, sub := range subs {
 		if sub.Email == email {
 			subs[i] = subs[len(subs)-1]
-			m.targets[models.Daily] = subs[:len(subs)-1]
-			return
-		}
-	}
-}
-
-func (m *TargetManager) RemoveHourlyTarget(email string) {
-	m.mx.Lock()
-	defer m.mx.Unlock()
-
-	subs := m.targets[models.Hourly]
-	for i, sub := range subs {
-		if sub.Email == email {
-			subs[i] = subs[len(subs)-1]
-			m.targets[models.Hourly] = subs[:len(subs)-1]
+			m.targets[frequency] = subs[:len(subs)-1]
 			return
 		}
 	}

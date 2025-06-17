@@ -23,11 +23,8 @@ type EmailSender interface {
 }
 
 type SubscriptionTargetManager interface {
-	AddDailyTarget(sub models.Subscription)
-	AddHourlyTarget(sub models.Subscription)
-
-	RemoveDailyTarget(email string)
-	RemoveHourlyTarget(email string)
+	AddTarget(sub models.Subscription)
+	RemoveTarget(email string, frequency string)
 }
 
 type SubscriptionHandler struct {
@@ -118,12 +115,7 @@ func (s *SubscriptionHandler) Confirm(c *gin.Context) {
 		return
 	}
 
-	switch sub.Frequency {
-	case models.Hourly:
-		s.targetManager.AddHourlyTarget(sub)
-	case models.Daily:
-		s.targetManager.AddDailyTarget(sub)
-	}
+	s.targetManager.AddTarget(sub)
 
 	c.JSON(http.StatusOK, "Subscription confirmed successfully")
 }
@@ -142,12 +134,7 @@ func (s *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 		return
 	}
 
-	switch sub.Frequency {
-	case models.Hourly:
-		s.targetManager.RemoveHourlyTarget(sub.Email)
-	case models.Daily:
-		s.targetManager.RemoveDailyTarget(sub.Email)
-	}
+	s.targetManager.RemoveTarget(sub.Email, sub.Frequency)
 
 	c.JSON(http.StatusOK, "Unsubscribed successfully")
 }

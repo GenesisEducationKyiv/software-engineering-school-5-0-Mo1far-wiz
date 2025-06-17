@@ -21,9 +21,21 @@ type MailerStore interface {
 	GetSubscribed(ctx context.Context) ([]models.Subscription, error)
 }
 
+type MailerInterface interface {
+	sendEmails(ctx context.Context, subscriptions []models.Subscription, subjectPrefix string)
+	SendEmail(to, subject, body string) (err error)
+}
+
+type TargetsInterface interface {
+	LoadTargets(ctx context.Context, store TargetStore) error
+	GetTargets(subscriptionType string) []models.Subscription
+	AddTarget(sub models.Subscription)
+	RemoveTarget(email string, frequency string)
+}
+
 type Manager struct {
-	Mailer  SMTPMailer
-	Targets TargetManager
+	Mailer  MailerInterface
+	Targets TargetsInterface
 
 	stopChan chan struct{}
 	wg       sync.WaitGroup
@@ -32,14 +44,14 @@ type Manager struct {
 
 func New(config config.SMTPConfig, weatherService *weather.RemoteService) *Manager {
 	return &Manager{
-		Mailer: SMTPMailer{
+		Mailer: &SMTPMailer{
 			User:           config.SMTPUser,
 			Password:       config.SMTPPassword,
 			Host:           config.SMTPHost,
 			Port:           config.SMTPPort,
 			WeatherService: weatherService,
 		},
-		Targets:  TargetManager{},
+		Targets:  &TargetManager{},
 		stopChan: make(chan struct{}),
 	}
 }
@@ -48,20 +60,12 @@ func (m *Manager) LoadTargets(ctx context.Context, store MailerStore) error {
 	return m.Targets.LoadTargets(ctx, store)
 }
 
-func (m *Manager) AddDailyTarget(sub models.Subscription) {
-	m.Targets.AddDailyTarget(sub)
+func (m *Manager) AddTarget(sub models.Subscription) {
+	m.Targets.AddTarget(sub)
 }
 
-func (m *Manager) AddHourlyTarget(sub models.Subscription) {
-	m.Targets.AddHourlyTarget(sub)
-}
-
-func (m *Manager) RemoveDailyTarget(email string) {
-	m.Targets.RemoveDailyTarget(email)
-}
-
-func (m *Manager) RemoveHourlyTarget(email string) {
-	m.Targets.RemoveHourlyTarget(email)
+func (m *Manager) RemoveTarget(email string, frequency string) {
+	m.Targets.RemoveTarget(email, frequency)
 }
 
 func (m *Manager) Start() {
