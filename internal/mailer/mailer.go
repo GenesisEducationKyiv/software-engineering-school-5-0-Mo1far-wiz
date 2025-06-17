@@ -20,10 +20,13 @@ import (
 )
 
 const (
-	Day = 24 * time.Hour
+	Day                    = 24 * time.Hour
+	SendEmailDailyTimeout  = time.Minute * 15
+	SendEmailHourlyTimeout = time.Minute * 15
+	LoadTimeoutDuration    = time.Second * 5
 )
 
-type SubscribedStore interface {
+type MailerStore interface {
 	GetSubscribed(ctx context.Context) ([]models.Subscription, error)
 }
 
@@ -42,11 +45,22 @@ type SMTPMailer struct {
 	running  bool
 }
 
-func New(config config.SMTPConfig,
-	store SubscribedStore, weatherService *weather.RemoteService) *SMTPMailer {
-	subscriptions, err := store.GetSubscribed(context.Background())
+func New(config config.SMTPConfig, weatherService *weather.RemoteService) *SMTPMailer {
+	return &SMTPMailer{
+		User:           config.SMTPUser,
+		Password:       config.SMTPPassword,
+		Host:           config.SMTPHost,
+		Port:           config.SMTPPort,
+		WeatherService: weatherService,
+		targets:        nil,
+		stopChan:       make(chan struct{}),
+	}
+}
+
+func (m *SMTPMailer) LoadTargets(ctx context.Context, store MailerStore) error {
+	subscriptions, err := store.GetSubscribed(ctx)
 	if err != nil {
-		log.Panic(err)
+		return errors.Wrap(err, "unable to load Mailer targets")
 	}
 
 	targets := make(map[string][]models.Subscription)
@@ -55,15 +69,9 @@ func New(config config.SMTPConfig,
 		targets[sub.Frequency] = append(targets[sub.Frequency], sub)
 	}
 
-	return &SMTPMailer{
-		User:           config.SMTPUser,
-		Password:       config.SMTPPassword,
-		Host:           config.SMTPHost,
-		Port:           config.SMTPPort,
-		WeatherService: weatherService,
-		targets:        targets,
-		stopChan:       make(chan struct{}),
-	}
+	m.targets = targets
+
+	return nil
 }
 
 func (m *SMTPMailer) AddDailyTarget(sub models.Subscription) {
@@ -139,13 +147,17 @@ func (m *SMTPMailer) Start() {
 		case <-m.stopChan:
 			return
 		}
-		m.sendDailyEmails()
+		ctx, cancel := context.WithTimeout(context.Background(), SendEmailDailyTimeout)
+		m.sendDailyEmails(ctx)
+		cancel()
 		ticker := time.NewTicker(Day)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				m.sendDailyEmails()
+				ctx, cancel := context.WithTimeout(context.Background(), SendEmailDailyTimeout)
+				m.sendDailyEmails(ctx)
+				cancel()
 			case <-m.stopChan:
 				return
 			}
@@ -163,13 +175,17 @@ func (m *SMTPMailer) Start() {
 		case <-m.stopChan:
 			return
 		}
-		m.sendHourlyEmails()
+		ctx, cancel := context.WithTimeout(context.Background(), SendEmailHourlyTimeout)
+		m.sendHourlyEmails(ctx)
+		cancel()
 		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				m.sendHourlyEmails()
+				ctx, cancel := context.WithTimeout(context.Background(), SendEmailHourlyTimeout)
+				m.sendHourlyEmails(ctx)
+				cancel()
 			case <-m.stopChan:
 				return
 			}
@@ -189,13 +205,13 @@ func (m *SMTPMailer) Stop() {
 	m.wg.Wait()
 }
 
-func (m *SMTPMailer) sendDailyEmails() {
+func (m *SMTPMailer) sendDailyEmails(ctx context.Context) {
 	m.mx.RLock()
 	subs := append([]models.Subscription(nil), m.targets[models.Daily]...)
 	m.mx.RUnlock()
 
 	for _, sub := range subs {
-		weatherData, err := m.WeatherService.GetCityWeather(sub.City)
+		weatherData, err := m.WeatherService.GetCityWeather(ctx, sub.City)
 		if err != nil {
 			log.Printf("weather fetch error for %q: %v\n", sub.City, err)
 			continue
@@ -218,13 +234,13 @@ func (m *SMTPMailer) sendDailyEmails() {
 	}
 }
 
-func (m *SMTPMailer) sendHourlyEmails() {
+func (m *SMTPMailer) sendHourlyEmails(ctx context.Context) {
 	m.mx.RLock()
 	subs := append([]models.Subscription(nil), m.targets[models.Hourly]...)
 	m.mx.RUnlock()
 
 	for _, sub := range subs {
-		weatherData, err := m.WeatherService.GetCityWeather(sub.City)
+		weatherData, err := m.WeatherService.GetCityWeather(ctx, sub.City)
 		if err != nil {
 			log.Printf("weather fetch error for %q: %v\n", sub.City, err)
 			continue

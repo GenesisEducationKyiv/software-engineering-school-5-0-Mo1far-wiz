@@ -45,10 +45,10 @@ func NewWeatherAPI(config config.WeatherAPIConfig) *WeatherAPI {
 	}
 }
 
-func (wa *WeatherAPI) GetCityWeather(city string) (weather models.Weather, err error) {
+func (wa *WeatherAPI) GetCityWeather(ctx context.Context, city string) (weather models.Weather, err error) {
 	reqURL := wa.baseURL + "?key=" + wa.apiKey + "&q=" + city
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, reqURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return models.Weather{}, errors.Wrap(err, "unable to create new GET request to weather api")
 	}

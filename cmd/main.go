@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -105,7 +106,14 @@ func main() {
 	weatherService := weather.NewRemoteService(weather.NewWeatherAPI(weatherServiceConfig))
 
 	smtpConfig := getSMTPConfig()
-	mailerService := mailer.New(smtpConfig, store.Mailer, weatherService)
+	mailerService := mailer.New(smtpConfig, weatherService)
+
+	ctx, cancel := context.WithTimeout(context.Background(), mailer.LoadTimeoutDuration)
+	err = mailerService.LoadTargets(ctx, store.Mailer)
+	cancel()
+	if err != nil {
+		log.Panic(err)
+	}
 
 	app := application.Application{
 		Config:         appConfig,

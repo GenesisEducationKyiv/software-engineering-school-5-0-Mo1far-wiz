@@ -24,7 +24,7 @@ func (h *WeatherHandler) CityWeather(c *gin.Context) {
 		return
 	}
 
-	weather, err := h.weatherService.GetCityWeather(city)
+	weather, err := h.weatherService.GetCityWeather(c.Request.Context(), city)
 	if err != nil {
 		logErrorF(err, "on getting city weather")
 		c.JSON(http.StatusNotFound, "City not found")
