@@ -14,9 +14,9 @@ type EmailBuilder struct {
 
 func NewEmailBuilder() *EmailBuilder {
 	return &EmailBuilder{
-		subject: "Hello %s,\n\nCurrent weather in %s:\n" +
+		subject: " for %s – %s",
+		body: "Hello %s,\n\nCurrent weather in %s:\n" +
 			"- %s\n- Temperature: %d°C\n- Humidity: %d%%\n",
-		body: " for %s – %s",
 	}
 }
 

@@ -37,7 +37,7 @@ func (f *Forecaster) GetForecasts(
 		}
 	}
 
-	filter := func(f models.Forecast) bool { return f.Email != "" }
+	filter := func(f models.Forecast) bool { return f.Email == "" }
 	forecasts = slices.DeleteFunc(forecasts, filter)
 
 	return forecasts
