@@ -22,8 +22,9 @@ type MailerStore interface {
 }
 
 type Manager struct {
-	Mailer  *SMTPMailer
-	Targets *TargetManager
+	Mailer    *SMTPMailer
+	Targets   *TargetManager
+	Forecasts *Forecaster
 
 	stopChan chan struct{}
 	wg       sync.WaitGroup
@@ -31,16 +32,14 @@ type Manager struct {
 }
 
 func New(config config.SMTPConfig, weatherService *weather.RemoteService) *Manager {
+	forecaster := NewForecaster(weatherService)
+	mailer := NewSMTPMailer(config, NewEmailBuilder())
+
 	return &Manager{
-		Mailer: &SMTPMailer{
-			User:           config.SMTPUser,
-			Password:       config.SMTPPassword,
-			Host:           config.SMTPHost,
-			Port:           config.SMTPPort,
-			WeatherService: weatherService,
-		},
-		Targets:  &TargetManager{},
-		stopChan: make(chan struct{}),
+		Mailer:    mailer,
+		Targets:   &TargetManager{},
+		Forecasts: forecaster,
+		stopChan:  make(chan struct{}),
 	}
 }
 
@@ -73,7 +72,8 @@ func (m *Manager) Start() {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), SendEmailDailyTimeout)
 		targets := m.Targets.GetTargets(models.Daily)
-		m.Mailer.sendEmails(ctx, targets, "Daily Weather")
+		forecasts := m.Forecasts.GetForecasts(ctx, targets)
+		m.Mailer.sendEmails(ctx, forecasts, "Daily Weather")
 		cancel()
 		ticker := time.NewTicker(Day)
 		defer ticker.Stop()
@@ -82,7 +82,8 @@ func (m *Manager) Start() {
 			case <-ticker.C:
 				ctx, cancel := context.WithTimeout(context.Background(), SendEmailDailyTimeout)
 				targets := m.Targets.GetTargets(models.Daily)
-				m.Mailer.sendEmails(ctx, targets, "Daily Weather")
+				forecasts := m.Forecasts.GetForecasts(ctx, targets)
+				m.Mailer.sendEmails(ctx, forecasts, "Daily Weather")
 				cancel()
 			case <-m.stopChan:
 				return
@@ -103,7 +104,8 @@ func (m *Manager) Start() {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), SendEmailHourlyTimeout)
 		targets := m.Targets.GetTargets(models.Hourly)
-		m.Mailer.sendEmails(ctx, targets, "Hourly Weather")
+		forecasts := m.Forecasts.GetForecasts(ctx, targets)
+		m.Mailer.sendEmails(ctx, forecasts, "Hourly Weather")
 		cancel()
 		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
@@ -112,7 +114,8 @@ func (m *Manager) Start() {
 			case <-ticker.C:
 				ctx, cancel := context.WithTimeout(context.Background(), SendEmailHourlyTimeout)
 				targets := m.Targets.GetTargets(models.Hourly)
-				m.Mailer.sendEmails(ctx, targets, "Hourly Weather")
+				forecasts := m.Forecasts.GetForecasts(ctx, targets)
+				m.Mailer.sendEmails(ctx, forecasts, "Hourly Weather")
 				cancel()
 			case <-m.stopChan:
 				return
