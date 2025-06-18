@@ -21,21 +21,9 @@ type MailerStore interface {
 	GetSubscribed(ctx context.Context) ([]models.Subscription, error)
 }
 
-type MailerInterface interface {
-	sendEmails(ctx context.Context, subscriptions []models.Subscription, subjectPrefix string)
-	SendEmail(to, subject, body string) (err error)
-}
-
-type TargetsInterface interface {
-	LoadTargets(ctx context.Context, store TargetStore) error
-	GetTargets(subscriptionType string) []models.Subscription
-	AddTarget(sub models.Subscription)
-	RemoveTarget(email string, frequency string)
-}
-
 type Manager struct {
-	Mailer  MailerInterface
-	Targets TargetsInterface
+	Mailer  *SMTPMailer
+	Targets *TargetManager
 
 	stopChan chan struct{}
 	wg       sync.WaitGroup
