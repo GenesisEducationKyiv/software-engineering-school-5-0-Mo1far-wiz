@@ -39,12 +39,12 @@ type subscribeRequest struct {
 	Frequency string `json:"frequency"`
 }
 
-func sha256Token(input string) string {
+func SHA256Token(input string) string {
 	sum := sha256.Sum256([]byte(input))
 	return hex.EncodeToString(sum[:])
 }
 
-func validateToken(c *gin.Context) (string, error) {
+func ValidateToken(c *gin.Context) (string, error) {
 	token := c.GetString("token")
 	if token == "" || token == ":token" {
 		return "", srverrors.ErrorTokenNotFound
@@ -77,7 +77,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 		Email:     req.Email,
 		City:      req.City,
 		Frequency: req.Frequency,
-		Token:     sha256Token(req.Email + req.City + req.Frequency),
+		Token:     SHA256Token(req.Email + req.City + req.Frequency),
 	}
 
 	err := s.store.Create(c.Request.Context(), &subscription)
@@ -102,7 +102,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 }
 
 func (s *SubscriptionHandler) Confirm(c *gin.Context) {
-	token, err := validateToken(c)
+	token, err := ValidateToken(c)
 	if err != nil {
 		c.JSON(http.StatusNotFound, err.Error())
 		return
@@ -121,7 +121,7 @@ func (s *SubscriptionHandler) Confirm(c *gin.Context) {
 }
 
 func (s *SubscriptionHandler) Unsubscribe(c *gin.Context) {
-	token, err := validateToken(c)
+	token, err := ValidateToken(c)
 	if err != nil {
 		c.JSON(http.StatusNotFound, err.Error())
 		return
