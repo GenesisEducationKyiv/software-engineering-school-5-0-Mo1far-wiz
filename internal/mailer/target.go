@@ -61,11 +61,11 @@ func (m *TargetManager) RemoveTarget(email string, frequency string) {
 	defer m.mx.Unlock()
 
 	subs := m.targets[frequency]
-	for i, sub := range subs {
-		if sub.Email == email {
-			subs[i] = subs[len(subs)-1]
-			m.targets[frequency] = subs[:len(subs)-1]
-			return
+	filteredSubs := make([]models.Subscription, 0, len(subs))
+	for _, sub := range subs {
+		if sub.Email != email {
+			filteredSubs = append(filteredSubs, sub)
 		}
 	}
+	m.targets[frequency] = filteredSubs
 }
