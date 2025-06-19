@@ -135,7 +135,7 @@ func TestConfirm_Success(t *testing.T) {
 				AddTarget(sub)
 		}
 		wantCode     = http.StatusOK
-		wantContains = "Subscription confirmed successfully"
+		wantContains = "\"Subscription confirmed successfully\""
 	)
 
 	ctrl := gomock.NewController(t)
@@ -162,6 +162,11 @@ func TestConfirm_Success(t *testing.T) {
 func TestConfirm_InvalidToken(t *testing.T) {
 	t.Parallel()
 
+	var (
+		wantCode     = http.StatusNotFound
+		wantContains = "\"token not found\""
+	)
+
 	handler := handlers.NewSubscriptionHandler(
 		mock_handlers.NewMockSubscriptionStore(gomock.NewController(t)),
 		mock_handlers.NewMockEmailSender(gomock.NewController(t)),
@@ -174,8 +179,8 @@ func TestConfirm_InvalidToken(t *testing.T) {
 
 	handler.Confirm(c)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	assert.Contains(t, srverrors.ErrorTokenNotFound.Error(), w.Body.String())
+	assert.Equal(t, wantCode, w.Code)
+	assert.Contains(t, wantContains, w.Body.String())
 }
 
 func TestUnsubscribe_Success(t *testing.T) {
