@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var _ Mailer = (*MailerStore)(nil)
+
 type MailerStore struct {
 	db *sql.DB
 }
