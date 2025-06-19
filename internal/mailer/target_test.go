@@ -71,6 +71,9 @@ func TestAddTarget_NewAndDuplicate(t *testing.T) {
 
 	mockStore := mock_mailer.NewMockTargetStore(ctrl)
 
+	mockStore.EXPECT().
+		GetSubscribed(gomock.Any())
+
 	tm := &mailer.TargetManager{}
 	_ = tm.LoadTargets(context.Background(), mockStore)
 
