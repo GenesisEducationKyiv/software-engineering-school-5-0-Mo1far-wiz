@@ -73,11 +73,13 @@ func TestSubscription_Success(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest("POST", "/", bytes.NewBufferString(body))
+	req, err := http.NewRequest("POST", "/", bytes.NewBufferString(body))
+	c.Request = req
 	c.Request.Header.Set("Content-Type", "application/json")
 
 	handler.Subscribe(c)
 
+	assert.NoError(t, err)
 	assert.Equal(t, wantCode, w.Code)
 	assert.Contains(t, w.Body.String(), wantContains)
 }
@@ -106,11 +108,13 @@ func TestSubscription_ErrorAlreadyExists(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest("POST", "/", bytes.NewBufferString(body))
+	req, err := http.NewRequest("POST", "/", bytes.NewBufferString(body))
+	c.Request = req
 	c.Request.Header.Set("Content-Type", "application/json")
 
 	handler.Subscribe(c)
 
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusConflict, w.Code)
 	assert.Contains(t, w.Body.String(), "Email already subscribed")
 }
@@ -125,7 +129,9 @@ func TestConfirm_Success(t *testing.T) {
 			Frequency: "daily",
 			Token:     "sub-token",
 		}
-		setupMocks = func(store *mock_handlers.MockSubscriptionStore, target *mock_handlers.MockSubscriptionTargetManager) {
+		setupMocks = func(store *mock_handlers.MockSubscriptionStore,
+			target *mock_handlers.MockSubscriptionTargetManager,
+		) {
 			store.EXPECT().
 				Confirm(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, _ string) (models.Subscription, error) {
@@ -151,10 +157,13 @@ func TestConfirm_Success(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest("GET", "/confirm", nil)
+	req, err := http.NewRequest("GET", "/confirm", nil)
+	c.Request = req
 	c.Set("token", sub.Token)
 
 	handler.Confirm(c)
+
+	assert.NoError(t, err)
 	assert.Equal(t, wantCode, w.Code)
 	assert.Contains(t, wantContains, w.Body.String())
 }
@@ -175,10 +184,12 @@ func TestConfirm_InvalidToken(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest("GET", "/confirm", nil)
+	req, err := http.NewRequest("GET", "/confirm", nil)
+	c.Request = req
 
 	handler.Confirm(c)
 
+	assert.NoError(t, err)
 	assert.Equal(t, wantCode, w.Code)
 	assert.Contains(t, wantContains, w.Body.String())
 }
@@ -194,7 +205,9 @@ func TestUnsubscribe_Success(t *testing.T) {
 			Frequency: "daily",
 			Token:     token,
 		}
-		setupMocks = func(store *mock_handlers.MockSubscriptionStore, target *mock_handlers.MockSubscriptionTargetManager) {
+		setupMocks = func(store *mock_handlers.MockSubscriptionStore,
+			target *mock_handlers.MockSubscriptionTargetManager,
+		) {
 			store.EXPECT().
 				Unsubscribe(gomock.Any(), token).
 				DoAndReturn(func(_ context.Context, _ string) (models.Subscription, error) {
@@ -220,10 +233,13 @@ func TestUnsubscribe_Success(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest("GET", "/unsubscribe", nil)
+	req, err := http.NewRequest("GET", "/unsubscribe", nil)
+	c.Request = req
 	c.Set("token", sub.Token)
 
 	handler.Unsubscribe(c)
+
+	assert.NoError(t, err)
 	assert.Equal(t, wantCode, w.Code)
 	assert.Contains(t, wantContains, w.Body.String())
 }
@@ -244,10 +260,12 @@ func TestUnsubscribe_InvalidToken(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest("GET", "/unsubscribe", nil)
+	req, err := http.NewRequest("GET", "/unsubscribe", nil)
+	c.Request = req
 
 	handler.Confirm(c)
 
+	assert.NoError(t, err)
 	assert.Equal(t, wantCode, w.Code)
 	assert.Contains(t, wantContains, w.Body.String())
 }

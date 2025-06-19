@@ -42,7 +42,10 @@ func TestCityWeather_ViaTestServer(t *testing.T) {
 		if err != nil {
 			t.Fatalf("marshal: %v", err)
 		}
-		w.Write(b)
+		_, err = w.Write(b)
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
 	}))
 	defer ts.Close()
 
@@ -56,11 +59,13 @@ func TestCityWeather_ViaTestServer(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest("GET", "/weather", nil)
+	req, err := http.NewRequest("GET", "/weather", nil)
+	c.Request = req
 	c.Set("city", "Kyiv")
 
 	h.CityWeather(c)
 
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), `"temperature":13`)
 	assert.Contains(t, w.Body.String(), `"humidity":25`)
@@ -76,10 +81,12 @@ func TestCityWeather_BadRequest(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest("GET", "/weather", nil)
+	req, err := http.NewRequest("GET", "/weather", nil)
+	c.Request = req
 
 	h.CityWeather(c)
 
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "Invalid request")
 }
@@ -100,11 +107,13 @@ func TestCityWeather_NotFound(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest("GET", "/weather", nil)
+	req, err := http.NewRequest("GET", "/weather", nil)
+	c.Request = req
 	c.Set("city", "Gotham")
 
 	h.CityWeather(c)
 
+	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	assert.Contains(t, w.Body.String(), "City not found")
 }

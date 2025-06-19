@@ -75,7 +75,8 @@ func TestAddTarget_NewAndDuplicate(t *testing.T) {
 		GetSubscribed(gomock.Any())
 
 	tm := &mailer.TargetManager{}
-	_ = tm.LoadTargets(context.Background(), mockStore)
+	err := tm.LoadTargets(context.Background(), mockStore)
+	assert.NoError(t, err)
 
 	sub := models.Subscription{Email: "new@e", Frequency: "daily"}
 
@@ -105,7 +106,8 @@ func TestRemoveTarget_FoundAndNotFound(t *testing.T) {
 		Return(initial, nil)
 
 	tm := &mailer.TargetManager{}
-	_ = tm.LoadTargets(context.Background(), mockStore)
+	err := tm.LoadTargets(context.Background(), mockStore)
+	assert.NoError(t, err)
 
 	tm.RemoveTarget("a@a", "daily")
 	remaining := tm.GetTargets("daily")
