@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"weather/internal/config"
 	"weather/internal/models"
 
 	joinErr "errors"
@@ -24,7 +25,7 @@ type weatherAPIResponse struct {
 	} `json:"current"`
 }
 
-func (wa weatherAPIResponse) GetWeatherModel() models.Weather {
+func (wa weatherAPIResponse) getWeatherModel() models.Weather {
 	return models.Weather{
 		Temperature: int(wa.Current.TempC),
 		Humidity:    wa.Current.Humidity,
@@ -33,14 +34,21 @@ func (wa weatherAPIResponse) GetWeatherModel() models.Weather {
 }
 
 type WeatherAPI struct {
-	BaseURL string
-	APIKey  string
+	baseURL string
+	apiKey  string
 }
 
-func (wa *WeatherAPI) GetCityWeather(city string) (weather models.Weather, err error) {
-	reqURL := wa.BaseURL + "?key=" + wa.APIKey + "&q=" + city
+func NewWeatherAPI(config config.WeatherAPIConfig) *WeatherAPI {
+	return &WeatherAPI{
+		baseURL: config.ServiceBaseURL,
+		apiKey:  config.APIKey,
+	}
+}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, reqURL, nil)
+func (wa *WeatherAPI) GetCityWeather(ctx context.Context, city string) (weather models.Weather, err error) {
+	reqURL := wa.baseURL + "?key=" + wa.apiKey + "&q=" + city
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return models.Weather{}, errors.Wrap(err, "unable to create new GET request to weather api")
 	}
@@ -77,5 +85,5 @@ func (wa *WeatherAPI) GetCityWeather(city string) (weather models.Weather, err e
 		return models.Weather{}, errors.Wrap(err, "unable to unmarshal request body")
 	}
 
-	return weatherResp.GetWeatherModel(), nil
+	return weatherResp.getWeatherModel(), nil
 }

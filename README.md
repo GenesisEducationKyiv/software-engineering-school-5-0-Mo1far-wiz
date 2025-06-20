@@ -16,7 +16,7 @@ make up
 ## About
 I used Gin, SQL and migrate.
 
-Also i have added postman collection for tests.
+Also I have added postman collection for tests.
 
 ## Postman
 You can access postman collection for tests [on this url](https://www.postman.com/avionics-operator-63001856/workspace/genesis-weather).

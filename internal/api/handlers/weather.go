@@ -2,20 +2,17 @@ package handlers
 
 import (
 	"net/http"
-	"weather/internal/store"
 	"weather/internal/weather"
 
 	"github.com/gin-gonic/gin"
 )
 
 type WeatherHandler struct {
-	store          store.Storage
 	weatherService *weather.RemoteService
 }
 
-func NewWeatherHandler(store store.Storage, weatherService *weather.RemoteService) *WeatherHandler {
+func NewWeatherHandler(weatherService *weather.RemoteService) *WeatherHandler {
 	return &WeatherHandler{
-		store:          store,
 		weatherService: weatherService,
 	}
 }
@@ -27,7 +24,7 @@ func (h *WeatherHandler) CityWeather(c *gin.Context) {
 		return
 	}
 
-	weather, err := h.weatherService.GetCityWeather(city)
+	weather, err := h.weatherService.GetCityWeather(c.Request.Context(), city)
 	if err != nil {
 		logErrorF(err, "on getting city weather")
 		c.JSON(http.StatusNotFound, "City not found")
