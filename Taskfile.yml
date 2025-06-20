@@ -108,6 +108,7 @@ tasks:
       - testdb-up
     cmds:
       - go test -v ./internal/api/...
+    defer:
       - task: testdb-down
     silent: true
 
