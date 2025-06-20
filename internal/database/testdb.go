@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"testing"
 	"weather/internal/config"
 	"weather/internal/env"
@@ -36,7 +37,10 @@ func NewTestDB(t *testing.T) *sql.DB {
 	}
 
 	if err := ValidateConnection(db); err != nil {
-		db.Close()
+		err := db.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
 		t.Fatalf("ping test db failed: %v", err)
 	}
 
