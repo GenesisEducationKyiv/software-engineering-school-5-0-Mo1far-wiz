@@ -97,7 +97,7 @@ func (n *noopTargetMgr) AddTarget(models.Subscription)             {}
 func (n *noopTargetMgr) RemoveTarget(string, string)               {}
 func (n *noopTargetMgr) GetTargets(_ string) []models.Subscription { return nil }
 
-func TestSubscriptionStoreIntegration_CreateAndConfirm(t *testing.T) {
+func TestCreateAndConfirm(t *testing.T) {
 	db := setupTestDB(t)
 	store := store.NewStorage(db)
 	ctx := context.Background()
@@ -138,7 +138,7 @@ func TestSubscriptionStoreIntegration_CreateAndConfirm(t *testing.T) {
 	assert.True(t, confirmed)
 }
 
-func TestSubscribeHandlerIntegration(t *testing.T) {
+func TestSubscribeHandler(t *testing.T) {
 	db := setupTestDB(t)
 	store := store.NewStorage(db)
 	emailer := &stubEmailSender{}
