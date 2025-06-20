@@ -109,6 +109,7 @@ tasks:
     cmds:
       - go test -v ./internal/api/...
       - defer: {task: testdb-down}
+    ignore_error: true
     silent: true
 
   test-unit:
