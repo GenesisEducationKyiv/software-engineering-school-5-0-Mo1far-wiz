@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,16 +17,35 @@ import (
 	"weather/internal/store"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
 func setupENV() {
-	os.Setenv("TEST_DB_NAME", "test_weather")
-	os.Setenv("TEST_DB_USER", "test")
-	os.Setenv("TEST_DB_PASSWORD", "password")
-	os.Setenv("TEST_DB_HOST", "127.0.0.1")
-	os.Setenv("TEST_DB_PORT", "5433")
-	os.Setenv("TEST_DB_SSL_MODE", "disable")
+	err := os.Setenv("TEST_DB_NAME", "test_weather")
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "test env TEST_DB_NAME"))
+	}
+	err = os.Setenv("TEST_DB_USER", "test")
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "test env TEST_DB_USER"))
+	}
+	err = os.Setenv("TEST_DB_PASSWORD", "password")
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "test env TEST_DB_PASSWORD"))
+	}
+	err = os.Setenv("TEST_DB_HOST", "127.0.0.1")
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "test env TEST_DB_HOST"))
+	}
+	err = os.Setenv("TEST_DB_PORT", "5433")
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "test env TEST_DB_PORT"))
+	}
+	err = os.Setenv("TEST_DB_SSL_MODE", "disable")
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "test env TEST_DB_SSL_MODE"))
+	}
 }
 
 func setupTestDB(t *testing.T) *sql.DB {
