@@ -29,7 +29,9 @@ func (m *TargetManager) LoadTargets(ctx context.Context, store TargetStore) erro
 		targets[sub.Frequency] = append(targets[sub.Frequency], sub)
 	}
 
+	m.mx.Lock()
 	m.targets = targets
+	m.mx.Unlock()
 
 	return nil
 }
@@ -61,11 +63,11 @@ func (m *TargetManager) RemoveTarget(email string, frequency string) {
 	defer m.mx.Unlock()
 
 	subs := m.targets[frequency]
-	for i, sub := range subs {
-		if sub.Email == email {
-			subs[i] = subs[len(subs)-1]
-			m.targets[frequency] = subs[:len(subs)-1]
-			return
+	filteredSubs := make([]models.Subscription, 0, len(subs))
+	for _, sub := range subs {
+		if sub.Email != email {
+			filteredSubs = append(filteredSubs, sub)
 		}
 	}
+	m.targets[frequency] = filteredSubs
 }

@@ -15,6 +15,8 @@ const (
 	pgAlreadyExistsConstraint = "subscriptions_email_key"
 )
 
+var _ Subscription = (*SubscriptionStore)(nil)
+
 type SubscriptionStore struct {
 	db *sql.DB
 }
