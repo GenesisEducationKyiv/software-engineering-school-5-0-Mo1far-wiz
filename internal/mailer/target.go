@@ -29,7 +29,9 @@ func (m *TargetManager) LoadTargets(ctx context.Context, store TargetStore) erro
 		targets[sub.Frequency] = append(targets[sub.Frequency], sub)
 	}
 
+	m.mx.Lock()
 	m.targets = targets
+	m.mx.Unlock()
 
 	return nil
 }
