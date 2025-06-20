@@ -8,47 +8,43 @@ import (
 	"log"
 	"net/smtp"
 	"strings"
-	"time"
+	"weather/internal/config"
 	"weather/internal/models"
-	"weather/internal/weather"
 
 	"github.com/pkg/errors"
 )
 
 type SMTPMailer struct {
-	User           string
-	Password       string
-	Host           string
-	Port           string
-	WeatherService *weather.RemoteService
+	User         string
+	Password     string
+	Host         string
+	Port         string
+	emailBuilder *EmailBuilder
+}
+
+func NewSMTPMailer(config config.SMTPConfig, emailBuilder *EmailBuilder) *SMTPMailer {
+	return &SMTPMailer{
+		User:         config.SMTPUser,
+		Password:     config.SMTPPassword,
+		Host:         config.SMTPHost,
+		Port:         config.SMTPPort,
+		emailBuilder: emailBuilder,
+	}
 }
 
 func (m *SMTPMailer) sendEmails(
 	ctx context.Context,
-	subscriptions []models.Subscription,
+	forecasts []models.Forecast,
 	subjectPrefix string,
 ) {
-	for _, sub := range subscriptions {
-		weatherData, err := m.WeatherService.GetCityWeather(ctx, sub.City)
-		if err != nil {
-			log.Printf("weather fetch error for %q: %v\n", sub.City, err)
-			continue
-		}
-		subject := fmt.Sprintf(subjectPrefix+" for %s – %s", sub.City, time.Now().Format("2006-01-02"))
-		body := fmt.Sprintf(
-			"Hello %s,\n\nCurrent weather in %s:\n"+
-				"- %s\n- Temperature: %d°C\n- Humidity: %d%%\n",
-			sub.Email, sub.City,
-			weatherData.Description,
-			weatherData.Temperature,
-			weatherData.Humidity,
-		)
+	for _, f := range forecasts {
+		subj, body := m.emailBuilder.BuildWeatherForecastEmail(ctx, f.Email, f.City, f.Weather)
 
 		go func(email, subj, msg string) {
 			if err := m.SendEmail(email, subj, msg); err != nil {
-				log.Printf("daily email error to %s: %v\n", email, err)
+				log.Printf("email error to %s: %v\n", email, err)
 			}
-		}(sub.Email, subject, body)
+		}(f.Email, subjectPrefix+subj, body)
 	}
 }
 
