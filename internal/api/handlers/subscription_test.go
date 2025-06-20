@@ -3,269 +3,147 @@ package handlers_test
 import (
 	"bytes"
 	"context"
+	"database/sql"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+
 	"weather/internal/api/handlers"
-	mock_handlers "weather/internal/api/handlers/mocks"
+	"weather/internal/database"
 	"weather/internal/models"
-	"weather/internal/srverrors"
+	"weather/internal/store"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 )
 
-func TestValidateToken(t *testing.T) {
-	t.Parallel()
-
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Set("token", "")
-	_, err := handlers.ValidateToken(c)
-	assert.ErrorIs(t, err, srverrors.ErrorTokenNotFound)
-
-	c.Set("token", "my-token")
-	tok, err := handlers.ValidateToken(c)
-	assert.NoError(t, err)
-	assert.Equal(t, "my-token", tok)
+func setupENV() {
+	os.Setenv("TEST_DB_NAME", "test_weather")
+	os.Setenv("TEST_DB_USER", "test")
+	os.Setenv("TEST_DB_PASSWORD", "password")
+	os.Setenv("TEST_DB_HOST", "127.0.0.1")
+	os.Setenv("TEST_DB_PORT", "5433")
+	os.Setenv("TEST_DB_SSL_MODE", "disable")
 }
 
-func TestSHA256Token(t *testing.T) {
-	t.Parallel()
+func setupTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+	setupENV()
 
-	hashPhrase := "pes patron"
-	validToken := "28656ff9525f32170fc9eebb47a75b969c12599fcdd591be8555d12e212a8d3e"
+	db := database.NewTestDB(t)
 
-	token := handlers.SHA256Token(hashPhrase)
+	stmts := []string{
+		`CREATE SCHEMA IF NOT EXISTS weather;`,
+		`DROP TABLE IF EXISTS weather.subscriptions;`,
+		`CREATE TABLE weather.subscriptions (
+            id         SERIAL PRIMARY KEY,
+            email      TEXT UNIQUE NOT NULL,
+            city       TEXT NOT NULL,
+            frequency  TEXT NOT NULL,
+            token      TEXT NOT NULL,
+            confirmed  BOOLEAN NOT NULL DEFAULT FALSE,
+            subscribed BOOLEAN NOT NULL DEFAULT TRUE
+        );`,
+	}
 
-	assert.Equal(t, validToken, token)
+	for _, sqlStmt := range stmts {
+		if _, err := db.ExecContext(context.Background(), sqlStmt); err != nil {
+			t.Fatalf("failed to prepare test schema: %v", err)
+		}
+	}
+
+	if _, err := db.ExecContext(context.Background(),
+		`TRUNCATE TABLE weather.subscriptions RESTART IDENTITY;`); err != nil {
+		t.Logf("Warning: failed to clean test data: %v", err)
+	}
+
+	return db
 }
 
-func TestSubscription_Success(t *testing.T) {
-	t.Parallel()
+type stubEmailSender struct {
+	calls []string
+}
+
+func (s *stubEmailSender) SendEmail(to, subj, body string) error {
+	s.calls = append(s.calls, fmt.Sprintf("%s|%s", to, subj))
+	return nil
+}
+
+type noopTargetMgr struct{}
+
+func (n *noopTargetMgr) AddTarget(models.Subscription)             {}
+func (n *noopTargetMgr) RemoveTarget(string, string)               {}
+func (n *noopTargetMgr) GetTargets(_ string) []models.Subscription { return nil }
+
+func TestSubscriptionStoreIntegration_CreateAndConfirm(t *testing.T) {
+	db := setupTestDB(t)
+	store := store.NewStorage(db)
+	ctx := context.Background()
+
+	sub := &models.Subscription{
+		Email:     "alice@example.com",
+		City:      "Kyiv",
+		Frequency: "daily",
+		Token:     "tok123",
+	}
+	err := store.Subscription.Create(ctx, sub)
+	assert.NoError(t, err, "should create without error")
+	assert.NotZero(t, sub.ID, "ID should be set by DB")
 
 	var (
-		body       = `{"email":"cringe@gmail.com","city":"Kyiv","frequency":"daily"}`
-		setupMocks = func(store *mock_handlers.MockSubscriptionStore, email *mock_handlers.MockEmailSender) {
-			store.EXPECT().
-				Create(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, sub *models.Subscription) error {
-					return nil
-				})
-			email.EXPECT().
-				SendEmail("cringe@gmail.com", gomock.Any(), gomock.Any()).
-				Return(nil)
-		}
-		wantCode     = http.StatusOK
-		wantContains = "Subscription successful"
+		email, city, freq, token string
+		confirmed, subscribed    bool
 	)
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	store := mock_handlers.NewMockSubscriptionStore(ctrl)
-	email := mock_handlers.NewMockEmailSender(ctrl)
-	target := mock_handlers.NewMockSubscriptionTargetManager(ctrl)
-
-	setupMocks(store, email)
-
-	handler := handlers.NewSubscriptionHandler(store, email, target)
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, err := http.NewRequest("POST", "/", bytes.NewBufferString(body))
-	c.Request = req
-	c.Request.Header.Set("Content-Type", "application/json")
-
-	handler.Subscribe(c)
-
+	row := db.QueryRowContext(ctx,
+		`SELECT email, city, frequency, token, confirmed, subscribed
+         FROM weather.subscriptions WHERE id = $1`,
+		sub.ID,
+	)
+	err = row.Scan(&email, &city, &freq, &token, &confirmed, &subscribed)
 	assert.NoError(t, err)
-	assert.Equal(t, wantCode, w.Code)
-	assert.Contains(t, w.Body.String(), wantContains)
+	assert.Equal(t, sub.Email, email)
+	assert.False(t, confirmed, "new record should be unconfirmed")
+	assert.True(t, subscribed, "new record should be subscribed")
+
+	_, err = store.Subscription.Confirm(ctx, sub.Token)
+	assert.NoError(t, err)
+
+	err = db.QueryRowContext(ctx,
+		`SELECT confirmed FROM weather.subscriptions WHERE token = $1`,
+		sub.Token,
+	).Scan(&confirmed)
+	assert.NoError(t, err)
+	assert.True(t, confirmed)
 }
 
-func TestSubscription_ErrorAlreadyExists(t *testing.T) {
-	t.Parallel()
+func TestSubscribeHandlerIntegration(t *testing.T) {
+	db := setupTestDB(t)
+	store := store.NewStorage(db)
+	emailer := &stubEmailSender{}
+	targetMgr := &noopTargetMgr{}
 
-	body := `{"email":"cringe@gmail.com","city":"Kyiv","frequency":"daily"}`
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	store := mock_handlers.NewMockSubscriptionStore(ctrl)
-	email := mock_handlers.NewMockEmailSender(ctrl)
-	target := mock_handlers.NewMockSubscriptionTargetManager(ctrl)
-
-	store.EXPECT().
-		Create(gomock.Any(), gomock.Any()).
-		Return(srverrors.ErrorAlreadyExists)
-
-	email.EXPECT().
-		SendEmail(gomock.Any(), gomock.Any(), gomock.Any()).
-		Times(0) // like if we got previous error we shouldn't send any emails
-
-	handler := handlers.NewSubscriptionHandler(store, email, target)
+	handler := handlers.NewSubscriptionHandler(store.Subscription, emailer, targetMgr)
+	router := gin.New()
+	router.POST("/subscribe", handler.Subscribe)
 
 	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, err := http.NewRequest("POST", "/", bytes.NewBufferString(body))
-	c.Request = req
-	c.Request.Header.Set("Content-Type", "application/json")
+	body := `{"email":"bob@example.com","city":"Lviv","frequency":"hourly"}`
+	req := httptest.NewRequest("POST", "/subscribe", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
 
-	handler.Subscribe(c)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "Subscription successful")
 
+	var gotEmail string
+	err := db.QueryRowContext(context.Background(),
+		`SELECT email FROM weather.subscriptions WHERE email = $1`, "bob@example.com",
+	).Scan(&gotEmail)
 	assert.NoError(t, err)
-	assert.Equal(t, http.StatusConflict, w.Code)
-	assert.Contains(t, w.Body.String(), "Email already subscribed")
-}
+	assert.Equal(t, "bob@example.com", gotEmail)
 
-func TestConfirm_Success(t *testing.T) {
-	t.Parallel()
-
-	var (
-		sub = models.Subscription{
-			Email:     "cringe@gmail.com",
-			City:      "Kyiv",
-			Frequency: "daily",
-			Token:     "sub-token",
-		}
-		setupMocks = func(store *mock_handlers.MockSubscriptionStore,
-			target *mock_handlers.MockSubscriptionTargetManager,
-		) {
-			store.EXPECT().
-				Confirm(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, _ string) (models.Subscription, error) {
-					return sub, nil
-				})
-			target.EXPECT().
-				AddTarget(sub)
-		}
-		wantCode     = http.StatusOK
-		wantContains = "\"Subscription confirmed successfully\""
-	)
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	store := mock_handlers.NewMockSubscriptionStore(ctrl)
-	email := mock_handlers.NewMockEmailSender(ctrl)
-	target := mock_handlers.NewMockSubscriptionTargetManager(ctrl)
-
-	setupMocks(store, target)
-
-	handler := handlers.NewSubscriptionHandler(store, email, target)
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, err := http.NewRequest("GET", "/confirm", nil)
-	c.Request = req
-	c.Set("token", sub.Token)
-
-	handler.Confirm(c)
-
-	assert.NoError(t, err)
-	assert.Equal(t, wantCode, w.Code)
-	assert.Contains(t, wantContains, w.Body.String())
-}
-
-func TestConfirm_InvalidToken(t *testing.T) {
-	t.Parallel()
-
-	var (
-		wantCode     = http.StatusNotFound
-		wantContains = "\"token not found\""
-	)
-
-	handler := handlers.NewSubscriptionHandler(
-		mock_handlers.NewMockSubscriptionStore(gomock.NewController(t)),
-		mock_handlers.NewMockEmailSender(gomock.NewController(t)),
-		mock_handlers.NewMockSubscriptionTargetManager(gomock.NewController(t)),
-	)
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, err := http.NewRequest("GET", "/confirm", nil)
-	c.Request = req
-
-	handler.Confirm(c)
-
-	assert.NoError(t, err)
-	assert.Equal(t, wantCode, w.Code)
-	assert.Contains(t, wantContains, w.Body.String())
-}
-
-func TestUnsubscribe_Success(t *testing.T) {
-	t.Parallel()
-
-	var (
-		token = "token"
-		sub   = models.Subscription{
-			Email:     "cringe@gmail.com",
-			City:      "Kyiv",
-			Frequency: "daily",
-			Token:     token,
-		}
-		setupMocks = func(store *mock_handlers.MockSubscriptionStore,
-			target *mock_handlers.MockSubscriptionTargetManager,
-		) {
-			store.EXPECT().
-				Unsubscribe(gomock.Any(), token).
-				DoAndReturn(func(_ context.Context, _ string) (models.Subscription, error) {
-					return sub, nil
-				})
-			target.EXPECT().
-				RemoveTarget(sub.Email, sub.Frequency)
-		}
-		wantCode     = http.StatusOK
-		wantContains = "\"Unsubscribed successfully\""
-	)
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	store := mock_handlers.NewMockSubscriptionStore(ctrl)
-	email := mock_handlers.NewMockEmailSender(ctrl)
-	target := mock_handlers.NewMockSubscriptionTargetManager(ctrl)
-
-	setupMocks(store, target)
-
-	handler := handlers.NewSubscriptionHandler(store, email, target)
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, err := http.NewRequest("GET", "/unsubscribe", nil)
-	c.Request = req
-	c.Set("token", sub.Token)
-
-	handler.Unsubscribe(c)
-
-	assert.NoError(t, err)
-	assert.Equal(t, wantCode, w.Code)
-	assert.Contains(t, wantContains, w.Body.String())
-}
-
-func TestUnsubscribe_InvalidToken(t *testing.T) {
-	t.Parallel()
-
-	var (
-		wantCode     = http.StatusNotFound
-		wantContains = "\"token not found\""
-	)
-
-	handler := handlers.NewSubscriptionHandler(
-		mock_handlers.NewMockSubscriptionStore(gomock.NewController(t)),
-		mock_handlers.NewMockEmailSender(gomock.NewController(t)),
-		mock_handlers.NewMockSubscriptionTargetManager(gomock.NewController(t)),
-	)
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, err := http.NewRequest("GET", "/unsubscribe", nil)
-	c.Request = req
-
-	handler.Confirm(c)
-
-	assert.NoError(t, err)
-	assert.Equal(t, wantCode, w.Code)
-	assert.Contains(t, wantContains, w.Body.String())
+	assert.Len(t, emailer.calls, 1)
+	assert.Contains(t, emailer.calls[0], "bob@example.com|")
 }

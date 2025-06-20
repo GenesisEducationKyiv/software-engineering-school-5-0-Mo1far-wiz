@@ -101,3 +101,18 @@ tasks:
     silent: true
     requires:
       vars: [MIGRATION_PATH, DB_URL]
+
+  test-integration:
+    desc: Integration tests (spin ups database in docker)
+    deps:
+      - testdb-up
+    cmds:
+      - go test -v ./internal/api/...
+      - task: testdb-down
+    silent: true
+
+  test-unit:
+    desc: Unit tests (no external dependencies)
+    cmds:
+      - go test -v $(go list ./... | grep -v 'internal/api')
+    silent: true

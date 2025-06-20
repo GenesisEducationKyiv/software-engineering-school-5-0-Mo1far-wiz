@@ -12,10 +12,10 @@ import (
 func NewTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 
-	dbName := env.GetString("TEST_DB_NAME", "test_weather")
-	dbPassword := env.GetString("TEST_DB_PASSWORD", "password")
-	dbUser := env.GetString("TEST_DB_USER", "test")
-	dbHost := env.GetString("TEST_DB_HOST", "127.0.0.1")
+	dbName := env.GetString("TEST_DB_NAME", "")
+	dbPassword := env.GetString("TEST_DB_PASSWORD", "")
+	dbUser := env.GetString("TEST_DB_USER", "")
+	dbHost := env.GetString("TEST_DB_HOST", "")
 	dbPort := env.GetInt("TEST_DB_PORT", 5432)
 	dbSSL := env.GetString("TEST_DB_SSL_MODE", "disable")
 
@@ -23,6 +23,8 @@ func NewTestDB(t *testing.T) *sql.DB {
 		"user=%s password=%s host=%s port=%d dbname=%s sslmode=%s",
 		dbUser, dbPassword, dbHost, dbPort, dbName, dbSSL,
 	)
+
+	log.Println(dsn)
 
 	cfg := config.DBConfig{
 		Addr:         dsn,

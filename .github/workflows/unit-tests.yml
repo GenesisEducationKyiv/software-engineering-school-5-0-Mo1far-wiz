@@ -1,4 +1,4 @@
-name: Go Test
+name: Go Unit Test
 
 on:
   push:
@@ -24,6 +24,3 @@ jobs:
 
       - name: Run Unit tests
         run: go test -v $(go list ./... | grep -v 'internal/api')
-
-      - name: Run Integration tests
-        run: go test -v ./internal/api/...

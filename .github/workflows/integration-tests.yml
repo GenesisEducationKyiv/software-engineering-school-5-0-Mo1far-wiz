@@ -1,0 +1,56 @@
+# .github/workflows/go-ci.yml
+name: Go Integration Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB:       test_weather
+          POSTGRES_USER:     test
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U test -p 5432"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_DB_NAME:     test_weather
+      TEST_DB_USER:     test
+      TEST_DB_PASSWORD: password
+      TEST_DB_HOST:     localhost
+      TEST_DB_PORT:     5433
+      TEST_DB_SSL_MODE: disable
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.24
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Wait for Postgres
+        run: |
+          until pg_isready -h localhost -p 5433 -U test; do
+            echo "Waiting for Postgres..."
+            sleep 1
+          done
+
+      - name: Run integration tests
+        run: go test -v ./internal/api/handlers
