@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCityWeather_ViaTestServer(t *testing.T) {
+func TestCityWeather_Success(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 

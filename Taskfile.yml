@@ -38,11 +38,25 @@ tasks:
       - docker-compose up -d postgres
     silent: true
 
+  testdb-up:
+    desc: Runs test database image.
+    cmds:
+      - echo "Starting test database container..."
+      - docker-compose up -d testdb
+    silent: true
+
   db-down:
     desc: Downs database image.
     cmds:
       - echo "Stopping database container..."
       - docker-compose stop postgres
+    silent: true
+
+  testdb-down:
+    desc: Downs test database image.
+    cmds:
+      - echo "Stopping test database container..."
+      - docker-compose stop testdb
     silent: true
 
   clean:

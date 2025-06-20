@@ -1,4 +1,3 @@
-// internal/mailer/target_manager_test.go
 package mailer_test
 
 import (
