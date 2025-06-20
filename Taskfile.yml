@@ -42,7 +42,7 @@ tasks:
     desc: Runs test database image.
     cmds:
       - echo "Starting test database container..."
-      - docker-compose up -d testdb
+      - docker-compose -f docker-compose.test.yaml up -d testdb
     silent: true
 
   db-down:
@@ -56,7 +56,7 @@ tasks:
     desc: Downs test database image.
     cmds:
       - echo "Stopping test database container..."
-      - docker-compose stop testdb
+      - docker-compose -f docker-compose.test.yaml stop testdb
     silent: true
 
   clean:
