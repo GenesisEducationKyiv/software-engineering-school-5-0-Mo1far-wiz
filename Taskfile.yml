@@ -116,3 +116,9 @@ tasks:
     cmds:
       - go test -v $(go list ./... | grep -v 'internal/api')
     silent: true
+
+  test:
+    desc: Run both unit and integration tests
+    deps:
+      - test-unit
+      - test-integration
