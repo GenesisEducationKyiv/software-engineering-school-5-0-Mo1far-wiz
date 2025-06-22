@@ -2,27 +2,15 @@ package database
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"testing"
 	"weather/internal/config"
-	"weather/internal/env"
 )
 
-func NewTestDB(t *testing.T) *sql.DB {
+func NewTestDB(dsn string, t *testing.T) *sql.DB {
 	t.Helper()
-
-	dbName := env.GetString("TEST_DB_NAME", "")
-	dbPassword := env.GetString("TEST_DB_PASSWORD", "")
-	dbUser := env.GetString("TEST_DB_USER", "")
-	dbHost := env.GetString("TEST_DB_HOST", "")
-	dbPort := env.GetInt("TEST_DB_PORT", 5432)
-	dbSSL := env.GetString("TEST_DB_SSL_MODE", "disable")
-
-	dsn := fmt.Sprintf(
-		"user=%s password=%s host=%s port=%d dbname=%s sslmode=%s",
-		dbUser, dbPassword, dbHost, dbPort, dbName, dbSSL,
-	)
 
 	log.Println(dsn)
 
@@ -44,6 +32,23 @@ func NewTestDB(t *testing.T) *sql.DB {
 			log.Fatal(err)
 		}
 		t.Fatalf("ping test db failed: %v", err)
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+
+	projectRoot := filepath.Join(wd, "../../../")
+	migrationPath := filepath.Join(projectRoot, "internal/database/migrations")
+
+	migrationPath = filepath.Clean(migrationPath)
+
+	log.Printf("Migration path: %s", migrationPath)
+
+	err = MigrateUp(dsn, migrationPath)
+	if err != nil {
+		t.Fatalf("failed to migrate test db: %v", err)
 	}
 
 	t.Cleanup(func() {

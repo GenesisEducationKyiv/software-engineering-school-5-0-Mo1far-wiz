@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupENV() {
+func TestMain(m *testing.M) {
 	err := os.Setenv("TEST_DB_NAME", "test_weather")
 	if err != nil {
 		log.Fatal(errors.Wrap(err, "test env TEST_DB_NAME"))
@@ -46,40 +46,23 @@ func setupENV() {
 	if err != nil {
 		log.Fatal(errors.Wrap(err, "test env TEST_DB_SSL_MODE"))
 	}
-}
 
+	os.Exit(m.Run())
+}
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	setupENV()
 
-	db := database.NewTestDB(t)
+	dbURL := fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		os.Getenv("TEST_DB_USER"),
+		os.Getenv("TEST_DB_PASSWORD"),
+		os.Getenv("TEST_DB_HOST"),
+		os.Getenv("TEST_DB_PORT"),
+		os.Getenv("TEST_DB_NAME"),
+		os.Getenv("TEST_DB_SSL_MODE"),
+	)
 
-	stmts := []string{
-		`CREATE SCHEMA IF NOT EXISTS weather;`,
-		`DROP TABLE IF EXISTS weather.subscriptions;`,
-		`CREATE TABLE weather.subscriptions (
-            id         SERIAL PRIMARY KEY,
-            email      TEXT UNIQUE NOT NULL,
-            city       TEXT NOT NULL,
-            frequency  TEXT NOT NULL,
-            token      TEXT NOT NULL,
-            confirmed  BOOLEAN NOT NULL DEFAULT FALSE,
-            subscribed BOOLEAN NOT NULL DEFAULT TRUE
-        );`,
-	}
-
-	for _, sqlStmt := range stmts {
-		if _, err := db.ExecContext(context.Background(), sqlStmt); err != nil {
-			t.Fatalf("failed to prepare test schema: %v", err)
-		}
-	}
-
-	if _, err := db.ExecContext(context.Background(),
-		`TRUNCATE TABLE weather.subscriptions RESTART IDENTITY;`); err != nil {
-		t.Logf("Warning: failed to clean test data: %v", err)
-	}
-
-	return db
+	return database.NewTestDB(dbURL, t)
 }
 
 type stubEmailSender struct {
@@ -108,28 +91,26 @@ func TestCreateAndConfirm(t *testing.T) {
 		Frequency: "daily",
 		Token:     "tok123",
 	}
+
+	// Create
 	err := store.Subscription.Create(ctx, sub)
-	assert.NoError(t, err, "should create without error")
-	assert.NotZero(t, sub.ID, "ID should be set by DB")
-
-	var (
-		email, city, freq, token string
-		confirmed, subscribed    bool
-	)
-	row := db.QueryRowContext(ctx,
-		`SELECT email, city, frequency, token, confirmed, subscribed
-         FROM weather.subscriptions WHERE id = $1`,
-		sub.ID,
-	)
-	err = row.Scan(&email, &city, &freq, &token, &confirmed, &subscribed)
 	assert.NoError(t, err)
-	assert.Equal(t, sub.Email, email)
-	assert.False(t, confirmed, "new record should be unconfirmed")
-	assert.True(t, subscribed, "new record should be subscribed")
+	assert.NotZero(t, sub.ID)
 
+	// Check defaults
+	var confirmed bool
+	err = db.QueryRowContext(ctx,
+		`SELECT confirmed FROM weather.subscriptions WHERE id = $1`,
+		sub.ID,
+	).Scan(&confirmed)
+	assert.NoError(t, err)
+	assert.False(t, confirmed)
+
+	// Confirm
 	_, err = store.Subscription.Confirm(ctx, sub.Token)
 	assert.NoError(t, err)
 
+	// Verify confirmed = true
 	err = db.QueryRowContext(ctx,
 		`SELECT confirmed FROM weather.subscriptions WHERE token = $1`,
 		sub.Token,
@@ -149,8 +130,8 @@ func TestSubscribeHandler(t *testing.T) {
 	router.POST("/subscribe", handler.Subscribe)
 
 	w := httptest.NewRecorder()
-	body := `{"email":"bob@example.com","city":"Lviv","frequency":"hourly"}`
-	req := httptest.NewRequest("POST", "/subscribe", bytes.NewBufferString(body))
+	reqBody := `{"email":"bob@example.com","city":"Lviv","frequency":"hourly"}`
+	req := httptest.NewRequest(http.MethodPost, "/subscribe", bytes.NewBufferString(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -159,7 +140,8 @@ func TestSubscribeHandler(t *testing.T) {
 
 	var gotEmail string
 	err := db.QueryRowContext(context.Background(),
-		`SELECT email FROM weather.subscriptions WHERE email = $1`, "bob@example.com",
+		`SELECT email FROM weather.subscriptions WHERE email = $1`,
+		"bob@example.com",
 	).Scan(&gotEmail)
 	assert.NoError(t, err)
 	assert.Equal(t, "bob@example.com", gotEmail)

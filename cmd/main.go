@@ -93,6 +93,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	migratePath := env.GetString("MIGRATION_PATH", "not-found")
+	err = database.MigrateUp(dbConfig.Addr, migratePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	store := store.NewStorage(db)
 
 	defer func() {
