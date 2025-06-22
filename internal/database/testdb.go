@@ -34,17 +34,8 @@ func NewTestDB(dsn string, t *testing.T) *sql.DB {
 		t.Fatalf("ping test db failed: %v", err)
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get working directory: %v", err)
-	}
-
-	projectRoot := filepath.Join(wd, "../../../")
-	migrationPath := filepath.Join(projectRoot, "internal/database/migrations")
-
-	migrationPath = filepath.Clean(migrationPath)
-
-	log.Printf("Migration path: %s", migrationPath)
+	migrationPath := getProjectRoot() + "/internal/database/migrations"
+	log.Println(migrationPath)
 
 	err = MigrateUp(dsn, migrationPath)
 	if err != nil {
@@ -58,4 +49,29 @@ func NewTestDB(dsn string, t *testing.T) *sql.DB {
 	})
 
 	return db
+}
+
+func getProjectRoot() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return dir
+	}
+
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return dir
+	}
+	return wd
 }

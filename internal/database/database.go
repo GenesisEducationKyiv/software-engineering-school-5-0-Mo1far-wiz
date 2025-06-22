@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 	"weather/internal/config"
 
@@ -45,6 +47,23 @@ func ValidateConnection(db *sql.DB) error {
 }
 
 func MigrateUp(dbURL string, migrationPath string) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %v", err)
+	}
+
+	if filepath.IsAbs(migrationPath) {
+		migrationPath = filepath.Clean(migrationPath)
+	} else {
+		migrationPath = filepath.Join(wd, migrationPath)
+		migrationPath = filepath.Clean(migrationPath)
+	}
+
+	// projectRoot := filepath.Join(wd, "../../../")
+	// migrationPath = filepath.Join(projectRoot, migrationPath)
+
+	// migrationPath = filepath.Clean(migrationPath)
+
 	m, err := migrate.New(
 		fmt.Sprintf("file://%s", migrationPath),
 		dbURL,
@@ -61,6 +80,18 @@ func MigrateUp(dbURL string, migrationPath string) error {
 }
 
 func MigrateDown(dbURL string, migrationPath string) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %v", err)
+	}
+
+	if filepath.IsAbs(migrationPath) {
+		migrationPath = filepath.Clean(migrationPath)
+	} else {
+		migrationPath = filepath.Join(wd, migrationPath)
+		migrationPath = filepath.Clean(migrationPath)
+	}
+
 	m, err := migrate.New(
 		fmt.Sprintf("file://%s", migrationPath),
 		dbURL,

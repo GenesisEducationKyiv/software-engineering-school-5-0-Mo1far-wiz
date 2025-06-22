@@ -25,7 +25,7 @@ func getDatabaseConfig() config.DBConfig {
 	dbSSL := env.GetString("DB_SSL_MODE", "")
 
 	dbAddr := fmt.Sprintf(
-		"user=%s password=%s host=%s port=%d dbname=%s sslmode=%s",
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		dbUser,
 		dbPassword,
 		dbHost,

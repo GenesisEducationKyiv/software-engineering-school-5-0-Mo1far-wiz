@@ -61,4 +61,3 @@ services:
 
 volumes:
   postgres_data:
-  test_postgres_data:
