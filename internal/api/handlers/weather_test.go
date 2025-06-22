@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -67,9 +68,19 @@ func TestCityWeather_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, w.Code)
+
+	expectedJSON := fmt.Sprintf(
+		`{"temperature":%d,"humidity":%d,"description":"%s"}`,
+		expected.Temperature,
+		expected.Humidity,
+		expected.Description,
+	)
+
 	assert.Contains(t, w.Body.String(), `"temperature":13`)
 	assert.Contains(t, w.Body.String(), `"humidity":25`)
 	assert.Contains(t, w.Body.String(), `"description":"test"`)
+	assert.JSONEq(t, expectedJSON, w.Body.String(), "response must exactly match contract")
+
 }
 
 func TestCityWeather_BadRequest(t *testing.T) {
