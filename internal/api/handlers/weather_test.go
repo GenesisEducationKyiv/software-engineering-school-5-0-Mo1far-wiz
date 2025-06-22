@@ -80,7 +80,6 @@ func TestCityWeather_Success(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"humidity":25`)
 	assert.Contains(t, w.Body.String(), `"description":"test"`)
 	assert.JSONEq(t, expectedJSON, w.Body.String(), "response must exactly match contract")
-
 }
 
 func TestCityWeather_BadRequest(t *testing.T) {
