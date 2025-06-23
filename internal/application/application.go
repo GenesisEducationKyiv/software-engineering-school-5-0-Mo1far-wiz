@@ -13,19 +13,27 @@ import (
 	"weather/internal/mailer"
 	"weather/internal/store"
 	"weather/internal/weather"
+	"weather/pkg/logger"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 const shutdownTimeout = 5 * time.Second
+
+type Logger interface {
+	ConsoleLogInfo(msg string, fields ...zap.Field)
+	ConsoleLogError(msg string, fields ...zap.Field)
+}
 
 type Application struct {
 	Config         config.ApplicationConfig
 	Store          store.Storage
 	Router         *gin.Engine
 	server         *http.Server
-	WeatherService *weather.RemoteService
+	WeatherService *weather.WeatherService
 	MailerService  *mailer.Manager
+	Logger         *logger.Logger
 }
 
 func (a *Application) Initialize() {
@@ -43,12 +51,15 @@ func (a *Application) Initialize() {
 		a.WeatherService,
 		a.MailerService.Mailer,
 		a.MailerService.Targets,
+		a.Logger,
 	)
 }
 
 // Run starts the HTTP server and handles graceful shutdown upon receiving termination signals.
 func (a *Application) Run() {
 	a.Initialize()
+
+	a.Logger.ConsoleLogInfo("application initialized")
 
 	a.MailerService.Start()
 

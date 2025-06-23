@@ -1,0 +1,18 @@
+{"level":"error","ts":"2025-06-23T14:04:51.606+0300","caller":"logger/logger.go:61","msg":"WeatherAPI – Response: {\"error\":{\"code\":2006,\"message\":\"API key is invalid.\"}}"}
+{"level":"info","ts":"2025-06-23T14:04:52.396+0300","caller":"logger/logger.go:53","msg":"VisualCrossing – Response: {{72.6 60.1 Overcast}}"}
+{"level":"error","ts":"2025-06-23T14:04:55.160+0300","caller":"logger/logger.go:61","msg":"WeatherAPI – Response: {\"error\":{\"code\":2008,\"message\":\"API key has been disabled.\"}}"}
+{"level":"error","ts":"2025-06-23T14:04:55.341+0300","caller":"logger/logger.go:61","msg":"VisualCrossing – Response: Bad API Request:Invalid location parameter value."}
+{"level":"error","ts":"2025-06-23T14:05:34.056+0300","caller":"logger/logger.go:61","msg":"WeatherAPI – Response: {\"error\":{\"code\":2006,\"message\":\"API key is invalid.\"}}"}
+{"level":"error","ts":"2025-06-23T14:05:34.796+0300","caller":"logger/logger.go:61","msg":"VisualCrossing – Response: Bad API Request:Invalid location parameter value."}
+{"level":"error","ts":"2025-06-23T14:09:56.586+0300","caller":"logger/logger.go:63","msg":"WeatherAPI – Response: {\"error\":{\"code\":2006,\"message\":\"API key is invalid.\"}}"}
+{"level":"error","ts":"2025-06-23T14:09:57.316+0300","caller":"logger/logger.go:63","msg":"VisualCrossing – Response: Bad API Request:Invalid location parameter value."}
+{"level":"error","ts":"2025-06-23T14:10:18.997+0300","caller":"logger/logger.go:62","msg":"WeatherAPI – Response: {\"error\":{\"code\":2006,\"message\":\"API key is invalid.\"}}"}
+{"level":"error","ts":"2025-06-23T14:10:19.610+0300","caller":"logger/logger.go:62","msg":"VisualCrossing – Response: Bad API Request:Invalid location parameter value."}
+{"level":"error","ts":"2025-06-23T14:12:46.447+0300","caller":"logger/logger.go:64","msg":"WeatherAPI – Response: {\"error\":{\"code\":2006,\"message\":\"API key is invalid.\"}}"}
+{"level":"error","ts":"2025-06-23T14:12:47.156+0300","caller":"logger/logger.go:64","msg":"VisualCrossing – Response: Bad API Request:Invalid location parameter value."}
+{"level":"error","ts":"2025-06-23T14:14:39.684+0300","caller":"logger/logger.go:64","msg":"WeatherAPI – Response: {\"error\":{\"code\":2006,\"message\":\"API key is invalid.\"}}"}
+{"level":"error","ts":"2025-06-23T14:14:40.434+0300","caller":"logger/logger.go:64","msg":"VisualCrossing – Response: Bad API Request:Invalid location parameter value."}
+{"level":"error","ts":"2025-06-23T14:14:52.186+0300","caller":"logger/logger.go:64","msg":"WeatherAPI – Response: {\"error\":{\"code\":2006,\"message\":\"API key is invalid.\"}}"}
+{"level":"info","ts":"2025-06-23T14:14:52.498+0300","caller":"logger/logger.go:56","msg":"VisualCrossing – Response: {{72.6 60.1 Overcast}}"}
+{"level":"info","ts":"2025-06-23T14:15:17.555+0300","caller":"logger/logger.go:56","msg":"WeatherAPI – Response: {{21.1 70.1 {Sunny} 42}}"}
+{"level":"info","ts":"2025-06-23T14:16:00.673+0300","caller":"logger/logger.go:56","msg":"WeatherAPI – Response: {{17.8 64 {Partly cloudy} 81}}"}

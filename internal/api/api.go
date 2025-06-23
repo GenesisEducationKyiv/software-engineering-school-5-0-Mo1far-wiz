@@ -4,6 +4,7 @@ import (
 	"weather/internal/api/handlers"
 	"weather/internal/api/middleware"
 	"weather/internal/weather"
+	"weather/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,14 +12,15 @@ import (
 func Mount(
 	router *gin.Engine,
 	storage handlers.SubscriptionStore,
-	weatherService *weather.RemoteService,
+	weatherService *weather.WeatherService,
 	emailSender handlers.EmailSender,
 	targetManager handlers.SubscriptionTargetManager,
+	logger *logger.Logger,
 ) {
 	gin.SetMode(gin.ReleaseMode)
 
-	weatherHandler := handlers.NewWeatherHandler(weatherService)
-	subscriptionHandler := handlers.NewSubscriptionHandler(storage, emailSender, targetManager)
+	weatherHandler := handlers.NewWeatherHandler(weatherService, logger)
+	subscriptionHandler := handlers.NewSubscriptionHandler(storage, emailSender, targetManager, logger)
 
 	api := router.Group("/api")
 

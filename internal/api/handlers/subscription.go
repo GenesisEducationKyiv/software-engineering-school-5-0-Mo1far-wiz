@@ -10,6 +10,7 @@ import (
 	"weather/internal/srverrors"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type SubscriptionStore interface {
@@ -31,6 +32,7 @@ type SubscriptionHandler struct {
 	store         SubscriptionStore
 	targetManager SubscriptionTargetManager
 	emailSender   EmailSender
+	logger        Logger
 }
 
 type subscribeRequest struct {
@@ -57,18 +59,21 @@ func NewSubscriptionHandler(
 	store SubscriptionStore,
 	emailSender EmailSender,
 	targetManager SubscriptionTargetManager,
+	logger Logger,
 ) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		store:         store,
 		emailSender:   emailSender,
 		targetManager: targetManager,
+		logger:        logger,
 	}
 }
 
 func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 	var req subscribeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		logErrorF(err, "cant bind request to json")
+		s.logger.ConsoleLogError("cant bind request to json",
+			zap.String("error", err.Error()))
 		c.JSON(http.StatusBadRequest, "Invalid input")
 		return
 	}
@@ -82,7 +87,8 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 
 	err := s.store.Create(c.Request.Context(), &subscription)
 	if err != nil {
-		logErrorF(err, "can't create subscription")
+		s.logger.ConsoleLogError("can't create subscription",
+			zap.String("error", err.Error()))
 		if errors.Is(err, srverrors.ErrorAlreadyExists) {
 			c.JSON(http.StatusConflict, "Email already subscribed")
 		} else {
@@ -93,7 +99,8 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 
 	err = s.emailSender.SendEmail(subscription.Email, "Your token", subscription.Token)
 	if err != nil {
-		logErrorF(err, "failed to send confirmation email")
+		s.logger.ConsoleLogError("failed to send confirmation email",
+			zap.String("error", err.Error()))
 		c.JSON(http.StatusInternalServerError, "Can't send email")
 		return
 	}
@@ -110,7 +117,8 @@ func (s *SubscriptionHandler) Confirm(c *gin.Context) {
 
 	sub, err := s.store.Confirm(c.Request.Context(), token)
 	if err != nil {
-		logErrorF(err, "can't confirm subscription")
+		s.logger.ConsoleLogError("can't confirm subscription",
+			zap.String("error", err.Error()))
 		c.JSON(http.StatusNotFound, "Can't confirm subscription")
 		return
 	}
@@ -129,7 +137,8 @@ func (s *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 
 	sub, err := s.store.Unsubscribe(c.Request.Context(), token)
 	if err != nil {
-		logErrorF(err, "can't cancel subscription")
+		s.logger.ConsoleLogError("can't cancel subscription",
+			zap.String("error", err.Error()))
 		c.JSON(http.StatusNotFound, "Can't cancel subscription")
 		return
 	}
