@@ -7,6 +7,12 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+const (
+	fileMaxSizeMB  = 100
+	fileMaxBackups = 7
+	fileMaxAgeDays = 28
+)
+
 type Logger struct {
 	console *zap.Logger
 	file    *zap.Logger
@@ -32,9 +38,9 @@ func NewLogger(logFile string) (*Logger, error) {
 
 	rotatingFile := &lumberjack.Logger{
 		Filename:   logFile,
-		MaxSize:    100,
-		MaxBackups: 7,
-		MaxAge:     28,
+		MaxSize:    fileMaxSizeMB,
+		MaxBackups: fileMaxBackups,
+		MaxAge:     fileMaxAgeDays,
 		Compress:   true,
 	}
 
