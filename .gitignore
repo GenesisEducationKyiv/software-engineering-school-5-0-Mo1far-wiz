@@ -1,3 +1,5 @@
 .env
 
 .golangci.yaml
+
+weather.log

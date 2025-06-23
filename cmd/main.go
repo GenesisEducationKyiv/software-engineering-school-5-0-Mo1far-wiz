@@ -69,9 +69,9 @@ func getWeatherAPIConfig() config.WeatherAPIConfig {
 }
 
 func getVisualCrossingAPIConfig() config.WeatherAPIConfig {
-	weatherServiceURL := env.GetString("WISUALCROSSING_SERVICE_URL",
+	weatherServiceURL := env.GetString("VISUALCROSSING_SERVICE_URL",
 		"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/")
-	weatherAPIKey := env.GetString("WISUALCROSSING_API_KEY", "fake-api-key")
+	weatherAPIKey := env.GetString("VISUALCROSSING_API_KEY", "fake-api-key")
 
 	return config.WeatherAPIConfig{
 		ServiceBaseURL: weatherServiceURL,

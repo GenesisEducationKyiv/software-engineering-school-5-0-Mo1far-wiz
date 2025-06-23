@@ -23,8 +23,8 @@ func NewLogger(logFile string) (*Logger, error) {
 	consoleCfg := zap.NewDevelopmentConfig()
 	consoleCfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	consoleCfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	consoleCfg.DisableCaller = true     // Explicitly disable caller information
-	consoleCfg.DisableStacktrace = true // Explicitly disable stack traces
+	consoleCfg.DisableCaller = true
+	consoleCfg.DisableStacktrace = true
 
 	consoleLogger, err := consoleCfg.Build()
 	if err != nil {
