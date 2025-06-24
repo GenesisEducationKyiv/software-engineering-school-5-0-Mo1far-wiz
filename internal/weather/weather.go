@@ -36,13 +36,20 @@ func (wa weatherAPIResponse) getWeatherModel() models.Weather {
 type WeatherAPI struct {
 	baseURL string
 	apiKey  string
+	client  *http.Client
 }
 
 func NewWeatherAPI(config config.WeatherAPIConfig) *WeatherAPI {
 	return &WeatherAPI{
 		baseURL: config.ServiceBaseURL,
 		apiKey:  config.APIKey,
+		client:  http.DefaultClient,
 	}
+}
+
+func (wa *WeatherAPI) WithClient(client *http.Client) *WeatherAPI {
+	wa.client = client
+	return wa
 }
 
 func (wa *WeatherAPI) GetCityWeather(ctx context.Context, city string) (weather models.Weather, err error) {
@@ -53,7 +60,7 @@ func (wa *WeatherAPI) GetCityWeather(ctx context.Context, city string) (weather 
 		return models.Weather{}, errors.Wrap(err, "unable to create new GET request to weather api")
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := wa.client.Do(req)
 	if err != nil {
 		return models.Weather{}, errors.Wrap(err, "unable to send GET request to weather api")
 	}

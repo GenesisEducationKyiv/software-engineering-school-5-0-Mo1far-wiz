@@ -38,11 +38,25 @@ tasks:
       - docker-compose up -d postgres
     silent: true
 
+  testdb-up:
+    desc: Runs test database image.
+    cmds:
+      - echo "Starting test database container..."
+      - docker-compose -f docker-compose.test.yaml up -d testdb
+    silent: true
+
   db-down:
     desc: Downs database image.
     cmds:
       - echo "Stopping database container..."
       - docker-compose stop postgres
+    silent: true
+
+  testdb-down:
+    desc: Downs test database image.
+    cmds:
+      - echo "Stopping test database container..."
+      - docker-compose -f docker-compose.test.yaml stop testdb
     silent: true
 
   clean:
@@ -87,3 +101,25 @@ tasks:
     silent: true
     requires:
       vars: [MIGRATION_PATH, DB_URL]
+
+  test-integration:
+    desc: Integration tests (spin ups database in docker)
+    deps:
+      - testdb-up
+    cmds:
+      - go test -v ./internal/api/...
+      - defer: {task: testdb-down}
+    ignore_error: true
+    silent: true
+
+  test-unit:
+    desc: Unit tests (no external dependencies)
+    cmds:
+      - go test -v $(go list ./... | grep -v 'internal/api')
+    silent: true
+
+  test:
+    desc: Run both unit and integration tests
+    deps:
+      - test-unit
+      - test-integration

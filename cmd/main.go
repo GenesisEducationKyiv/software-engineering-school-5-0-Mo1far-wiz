@@ -25,7 +25,7 @@ func getDatabaseConfig() config.DBConfig {
 	dbSSL := env.GetString("DB_SSL_MODE", "")
 
 	dbAddr := fmt.Sprintf(
-		"user=%s password=%s host=%s port=%d dbname=%s sslmode=%s",
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		dbUser,
 		dbPassword,
 		dbHost,
@@ -89,6 +89,12 @@ func main() {
 	}
 
 	err = database.ValidateConnection(db)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	migratePath := env.GetString("MIGRATION_PATH", "not-found")
+	err = database.MigrateUp(dbConfig.Addr, migratePath)
 	if err != nil {
 		log.Fatal(err)
 	}

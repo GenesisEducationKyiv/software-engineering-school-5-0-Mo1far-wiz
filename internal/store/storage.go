@@ -9,15 +9,19 @@ import (
 
 const QueryTimeoutDuration = 1 * time.Second
 
+type Subscription interface {
+	Create(context.Context, *models.Subscription) error
+	Confirm(ctx context.Context, token string) (models.Subscription, error)
+	Unsubscribe(ctx context.Context, token string) (models.Subscription, error)
+}
+
+type Mailer interface {
+	GetSubscribed(ctx context.Context) ([]models.Subscription, error)
+}
+
 type Storage struct {
-	Subscription interface {
-		Create(context.Context, *models.Subscription) error
-		Confirm(ctx context.Context, token string) (models.Subscription, error)
-		Unsubscribe(ctx context.Context, token string) (models.Subscription, error)
-	}
-	Mailer interface {
-		GetSubscribed(ctx context.Context) ([]models.Subscription, error)
-	}
+	Subscription Subscription
+	Mailer       Mailer
 }
 
 func NewStorage(db *sql.DB) Storage {
