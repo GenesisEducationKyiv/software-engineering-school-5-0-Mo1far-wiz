@@ -2,6 +2,7 @@ package weather
 
 import (
 	"context"
+	"errors"
 	"weather/internal/models"
 
 	"go.uber.org/zap"
@@ -25,7 +26,11 @@ func (rs *WeatherService) GetCityWeather(ctx context.Context, city string) (mode
 	return rs.head.GetCityWeather(ctx, city)
 }
 
-func NewWeatherService(sources ...APIInterface) *WeatherService {
+func NewWeatherService(sources ...APIInterface) (*WeatherService, error) {
+	if len(sources) == 0 {
+		return nil, errors.New("need at least one API source")
+	}
+
 	rs := &WeatherService{}
 
 	for i := 0; i < len(sources)-1; i++ {
@@ -33,5 +38,5 @@ func NewWeatherService(sources ...APIInterface) *WeatherService {
 	}
 
 	rs.head = sources[0]
-	return rs
+	return rs, nil
 }

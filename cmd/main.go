@@ -128,7 +128,15 @@ func main() {
 		}
 	}()
 
-	baseT := http.DefaultTransport.(*http.Transport).Clone()
+	defaultRT := http.DefaultTransport
+	t, ok := defaultRT.(*http.Transport)
+	if !ok {
+		log.Panicf(
+			"expected http.DefaultTransport to be *http.Transport, got %T",
+			defaultRT,
+		)
+	}
+	baseT := t.Clone()
 
 	weatherClient := &http.Client{
 		Transport: &weather.WeatherLoggingRoundTripper{
@@ -154,7 +162,10 @@ func main() {
 	visualCrossingServiceConfig := getVisualCrossingAPIConfig()
 	visualCrossing := weather.NewVisualCrossingAPI(visualCrossingServiceConfig, logger).WithClient(vcClient)
 
-	weatherService := weather.NewWeatherService(weatherAPI, visualCrossing)
+	weatherService, err := weather.NewWeatherService(weatherAPI, visualCrossing)
+	if err != nil {
+		log.Panic(err)
+	}
 
 	smtpConfig := getSMTPConfig()
 	mailerService := mailer.New(smtpConfig, weatherService)

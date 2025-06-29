@@ -39,8 +39,15 @@ func (w *WeatherLoggingRoundTripper) RoundTrip(req *http.Request) (*http.Respons
 	}
 
 	respBody, readErr := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	if cerr := resp.Body.Close(); cerr != nil {
+		w.Logger.LogError(fmt.Sprintf(
+			"%s – error closing response body: %v",
+			w.APIName, cerr,
+		))
+	}
+
 	resp.Body = io.NopCloser(bytes.NewBuffer(respBody))
+
 	if readErr != nil {
 		w.Logger.LogError(fmt.Sprintf(
 			"%s – error reading response body: %v",

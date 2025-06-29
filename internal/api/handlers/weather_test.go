@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -57,7 +58,10 @@ func TestCityWeather_Success(t *testing.T) {
 		APIKey:         "unused",
 	}, logger).WithClient(ts.Client())
 
-	svc := weather.NewWeatherService(api)
+	svc, err := weather.NewWeatherService(api)
+	if err != nil {
+		log.Panic(err)
+	}
 	h := handlers.NewWeatherHandler(svc, logger)
 
 	w := httptest.NewRecorder()
@@ -118,7 +122,10 @@ func TestCityWeather_NotFound(t *testing.T) {
 		ServiceBaseURL: ts.URL,
 		APIKey:         "unused",
 	}, logger).WithClient(ts.Client())
-	svc := weather.NewWeatherService(api)
+	svc, err := weather.NewWeatherService(api)
+	if err != nil {
+		log.Panic(err)
+	}
 	h := handlers.NewWeatherHandler(svc, logger)
 
 	w := httptest.NewRecorder()
