@@ -59,11 +59,6 @@ func MigrateUp(dbURL string, migrationPath string) error {
 		migrationPath = filepath.Clean(migrationPath)
 	}
 
-	// projectRoot := filepath.Join(wd, "../../../")
-	// migrationPath = filepath.Join(projectRoot, migrationPath)
-
-	// migrationPath = filepath.Clean(migrationPath)
-
 	m, err := migrate.New(
 		fmt.Sprintf("file://%s", migrationPath),
 		dbURL,
