@@ -18,7 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const LogFile = "weather.log"
+const logFile = "weather.log"
 
 func getDatabaseConfig() config.DBConfig {
 	dbName := env.GetString("DB_NAME", "weather")
@@ -95,7 +95,7 @@ func getSMTPConfig() config.SMTPConfig {
 }
 
 func main() {
-	logger, err := logger.NewLogger(LogFile)
+	logger, err := logger.NewLogger(logFile)
 	if err != nil {
 		log.Fatal(err)
 	}
