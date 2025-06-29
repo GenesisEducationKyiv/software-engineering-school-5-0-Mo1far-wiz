@@ -4,7 +4,6 @@ import (
 	"weather/internal/api/handlers"
 	"weather/internal/api/middleware"
 	"weather/internal/weather"
-	"weather/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +14,7 @@ func Mount(
 	weatherService *weather.WeatherService,
 	emailSender handlers.EmailSender,
 	targetManager handlers.SubscriptionTargetManager,
-	logger *logger.Logger,
+	logger handlers.Logger,
 ) {
 	gin.SetMode(gin.ReleaseMode)
 

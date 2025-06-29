@@ -13,7 +13,6 @@ import (
 	"weather/internal/mailer"
 	"weather/internal/store"
 	"weather/internal/weather"
-	"weather/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -24,6 +23,7 @@ const shutdownTimeout = 5 * time.Second
 type Logger interface {
 	ConsoleLogInfo(msg string, fields ...zap.Field)
 	ConsoleLogError(msg string, fields ...zap.Field)
+	Sync() error
 }
 
 type Application struct {
@@ -33,7 +33,7 @@ type Application struct {
 	server         *http.Server
 	WeatherService *weather.WeatherService
 	MailerService  *mailer.Manager
-	Logger         *logger.Logger
+	Logger         Logger
 }
 
 func (a *Application) Initialize() {
