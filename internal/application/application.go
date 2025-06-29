@@ -77,6 +77,11 @@ func (a *Application) Run() {
 	log.Println("Shutting down server...")
 	a.MailerService.Stop()
 
+	err := a.Logger.Sync()
+	if err != nil {
+		log.Panicf("Logger sync error: %v", err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 

@@ -54,6 +54,20 @@ func NewLogger(logFile string) (*Logger, error) {
 	}, nil
 }
 
+func (l *Logger) Sync() error {
+	err := l.console.Sync()
+	if err != nil {
+		return errors.Wrap(err, "console logger sync")
+	}
+
+	err = l.file.Sync()
+	if err != nil {
+		return errors.Wrap(err, "file logger sync")
+	}
+
+	return nil
+}
+
 func (l *Logger) ConsoleLogInfo(msg string, fields ...zap.Field) {
 	l.console.Info(msg, fields...)
 }
