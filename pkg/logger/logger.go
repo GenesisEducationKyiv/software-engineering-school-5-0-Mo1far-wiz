@@ -19,7 +19,6 @@ type Logger struct {
 }
 
 func NewLogger(logFile string) (*Logger, error) {
-	// console logger
 	consoleCfg := zap.NewDevelopmentConfig()
 	consoleCfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	consoleCfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
@@ -31,7 +30,6 @@ func NewLogger(logFile string) (*Logger, error) {
 		return nil, errors.Wrap(err, "building console logger")
 	}
 
-	// file logger
 	fileEncoderCfg := zap.NewProductionEncoderConfig()
 	fileEncoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
 	fileEncoder := zapcore.NewJSONEncoder(fileEncoderCfg)
