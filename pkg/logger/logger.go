@@ -1,6 +1,9 @@
 package logger
 
 import (
+	"os"
+	"syscall"
+
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -53,13 +56,15 @@ func NewLogger(logFile string) (*Logger, error) {
 }
 
 func (l *Logger) Sync() error {
-	err := l.console.Sync()
-	if err != nil {
-		return errors.Wrap(err, "console logger sync")
+	if err := l.console.Sync(); err != nil {
+		if pe, ok := err.(*os.PathError); ok && pe.Err == syscall.ENOTTY {
+			// no-op
+		} else {
+			return errors.Wrap(err, "console logger sync")
+		}
 	}
 
-	err = l.file.Sync()
-	if err != nil {
+	if err := l.file.Sync(); err != nil {
 		return errors.Wrap(err, "file logger sync")
 	}
 

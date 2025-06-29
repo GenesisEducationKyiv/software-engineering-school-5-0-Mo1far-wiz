@@ -66,6 +66,15 @@ func (wa *VisualCrossingAPI) WithClient(client *http.Client) *VisualCrossingAPI 
 	return wa
 }
 
+func (wa *VisualCrossingAPI) WithLogging() *VisualCrossingAPI {
+	wa.client.Transport = &WeatherLoggingRoundTripper{
+		Base:    wa.client.Transport,
+		Logger:  wa.logger,
+		APIName: visualCrossingName,
+	}
+	return wa
+}
+
 func (wa *VisualCrossingAPI) GetCityWeather(
 	ctx context.Context,
 	city string,
@@ -115,16 +124,10 @@ func (wa *VisualCrossingAPI) getCityWeatherRequest(
 	}
 
 	if resp.StatusCode == http.StatusBadRequest {
-		wa.logger.LogError(
-			fmt.Sprintf("%s – Response: %s", visualCrossingName, string(body)),
-		)
 		return models.Weather{}, fmt.Errorf("city not found: %s", city)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		wa.logger.LogError(
-			fmt.Sprintf("%s – Response: %s", visualCrossingName, string(body)),
-		)
 		return models.Weather{}, fmt.Errorf("request failed: %d", resp.StatusCode)
 	}
 
@@ -133,10 +136,6 @@ func (wa *VisualCrossingAPI) getCityWeatherRequest(
 	if err != nil {
 		return models.Weather{}, errors.Wrap(err, "unmarshal")
 	}
-
-	wa.logger.LogInfo(
-		fmt.Sprintf("%s – Response: %v", visualCrossingName, weatherResp),
-	)
 
 	return weatherResp.getWeatherModel(), nil
 }

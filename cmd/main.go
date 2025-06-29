@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 	"weather/internal/application"
 	"weather/internal/config"
@@ -127,13 +128,31 @@ func main() {
 		}
 	}()
 
+	baseT := http.DefaultTransport.(*http.Transport).Clone()
+
+	weatherClient := &http.Client{
+		Transport: &weather.WeatherLoggingRoundTripper{
+			Base:    baseT,
+			Logger:  logger,
+			APIName: "WeatherAPI",
+		},
+	}
+
+	vcClient := &http.Client{
+		Transport: &weather.WeatherLoggingRoundTripper{
+			Base:    baseT,
+			Logger:  logger,
+			APIName: "VisualCrossing",
+		},
+	}
+
 	// primary
 	weatherAPIServiceConfig := getWeatherAPIConfig()
-	weatherAPI := weather.NewWeatherAPI(weatherAPIServiceConfig, logger)
+	weatherAPI := weather.NewWeatherAPI(weatherAPIServiceConfig, logger).WithClient(weatherClient)
 
 	// secondary
 	visualCrossingServiceConfig := getVisualCrossingAPIConfig()
-	visualCrossing := weather.NewVisualCrossingAPI(visualCrossingServiceConfig, logger)
+	visualCrossing := weather.NewVisualCrossingAPI(visualCrossingServiceConfig, logger).WithClient(vcClient)
 
 	weatherService := weather.NewWeatherService(weatherAPI, visualCrossing)
 
