@@ -42,7 +42,8 @@ func TestCityWeather_Success(t *testing.T) {
 				},
 			},
 		}
-		_ = json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		assert.Nil(t, err)
 	}))
 	defer ts.Close()
 
@@ -62,7 +63,9 @@ func TestCityWeather_Success(t *testing.T) {
 		Get(gomock.Any(), "Kyiv").
 		Return("", cache.ErrCacheMiss)
 
-	payload, _ := json.Marshal(expected)
+	payload, err := json.Marshal(expected)
+	assert.Nil(t, err)
+
 	mockCacher.
 		EXPECT().
 		Set(gomock.Any(), "Kyiv", string(payload), time.Hour).
