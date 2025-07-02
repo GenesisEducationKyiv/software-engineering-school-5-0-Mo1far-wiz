@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -105,7 +106,7 @@ func TestCityWeather_BadRequest(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	req, err := http.NewRequest("GET", "/weather", nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", "/weather", nil)
 	c.Request = req
 
 	h.CityWeather(c)
