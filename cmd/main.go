@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"time"
 	"weather/internal/application"
+	"weather/internal/cache"
 	"weather/internal/config"
 	"weather/internal/database"
 	"weather/internal/env"
 	"weather/internal/mailer"
+	"weather/internal/redis"
 	"weather/internal/store"
 	"weather/internal/weather"
 	"weather/pkg/logger"
@@ -94,6 +96,14 @@ func getSMTPConfig() config.SMTPConfig {
 	}
 }
 
+func getRedisConfig() config.RedisConfig {
+	return config.RedisConfig{
+		Addr:     "",
+		Password: "",
+		DB:       0,
+	}
+}
+
 func main() {
 	logger, err := logger.NewLogger(logFile)
 	if err != nil {
@@ -128,6 +138,9 @@ func main() {
 		}
 	}()
 
+	weatherAPIServiceConfig := getWeatherAPIConfig()
+	visualCrossingServiceConfig := getVisualCrossingAPIConfig()
+
 	defaultRT := http.DefaultTransport
 	t, ok := defaultRT.(*http.Transport)
 	if !ok {
@@ -143,6 +156,7 @@ func main() {
 			Base:    baseT,
 			Logger:  logger,
 			APIName: "WeatherAPI",
+			URL:     weatherAPIServiceConfig.ServiceBaseURL,
 		},
 	}
 
@@ -151,18 +165,22 @@ func main() {
 			Base:    baseT,
 			Logger:  logger,
 			APIName: "VisualCrossing",
+			URL:     visualCrossingServiceConfig.ServiceBaseURL,
 		},
 	}
 
 	// primary
-	weatherAPIServiceConfig := getWeatherAPIConfig()
 	weatherAPI := weather.NewWeatherAPI(weatherAPIServiceConfig, logger).WithClient(weatherClient)
 
 	// secondary
-	visualCrossingServiceConfig := getVisualCrossingAPIConfig()
 	visualCrossing := weather.NewVisualCrossingAPI(visualCrossingServiceConfig, logger).WithClient(vcClient)
 
-	weatherService, err := weather.NewWeatherService(weatherAPI, visualCrossing)
+	redisConfig := getRedisConfig()
+	redis := redis.NewClient(redisConfig)
+
+	cacheService := cache.NewCacheService(redis)
+
+	weatherService, err := weather.NewWeatherService(*cacheService, logger, weatherAPI, visualCrossing)
 	if err != nil {
 		log.Panic(err)
 	}

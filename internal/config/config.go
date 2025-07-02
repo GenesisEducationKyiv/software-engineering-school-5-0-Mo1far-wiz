@@ -29,3 +29,9 @@ type SMTPConfig struct {
 	SMTPHost     string
 	SMTPPort     string
 }
+
+type RedisConfig struct {
+	Addr     string
+	Password string
+	DB       int
+}
