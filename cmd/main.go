@@ -184,7 +184,7 @@ func main() {
 
 	cacheService := cache.NewCacheService(redis)
 
-	weatherService, err := weather.NewWeatherService(*cacheService, logger, weatherAPI, visualCrossing)
+	weatherService, err := weather.NewWeatherService(cacheService, logger, weatherAPI, visualCrossing)
 	if err != nil {
 		log.Panic(err)
 	}

@@ -22,7 +22,7 @@ type APIInterface interface {
 
 type WeatherService struct {
 	head   APIInterface
-	cache  cache.CacheService
+	cache  *cache.CacheService
 	logger Logger
 }
 
@@ -55,7 +55,7 @@ func (rs *WeatherService) GetCityWeather(ctx context.Context, city string) (mode
 	return weather, nil
 }
 
-func NewWeatherService(cache cache.CacheService, logger Logger, sources ...APIInterface) (*WeatherService, error) {
+func NewWeatherService(cache *cache.CacheService, logger Logger, sources ...APIInterface) (*WeatherService, error) {
 	if len(sources) == 0 {
 		return nil, errors.New("need at least one API source")
 	}
