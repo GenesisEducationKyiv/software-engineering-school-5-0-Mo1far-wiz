@@ -97,10 +97,14 @@ func getSMTPConfig() config.SMTPConfig {
 }
 
 func getRedisConfig() config.RedisConfig {
+	redisAddr := env.GetString("REDIS_ADDR", "127.0.0.1:6378")
+	redisPassword := env.GetString("REDIS_PASSWORD", "password")
+	redisDB := env.GetInt("REDIS_DB", 0)
+
 	return config.RedisConfig{
-		Addr:     "",
-		Password: "",
-		DB:       0,
+		Addr:     redisAddr,
+		Password: redisPassword,
+		DB:       redisDB,
 	}
 }
 

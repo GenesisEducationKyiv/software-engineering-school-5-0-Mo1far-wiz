@@ -77,11 +77,16 @@ tasks:
 
   run:
     desc: Builds project binary {{.BINARY_NAME}} and runs it.
+    deps:
+      - build
+      - db-up
+      - redis-up
     cmds:
-      - task: build
       - APP_PORT={{.APP_PORT}}
       - DB_URL="{{.DB_URL}}"
       - ./bin/{{.BINARY_NAME}}
+      - defer: {task: redis-down}
+      - defer: {task: db-down}
     silent: true
     requires:
       vars: [APP_PORT, DB_URL, BINARY_NAME]
@@ -123,3 +128,17 @@ tasks:
     deps:
       - test-unit
       - test-integration
+
+  redis-up:
+    desc: Runs the Redis container.
+    cmds:
+      - echo "Starting Redis container..."
+      - docker-compose up -d redis
+    silent: true
+
+  redis-down:
+    desc: Stops the Redis container.
+    cmds:
+      - echo "Stopping Redis container..."
+      - docker-compose stop redis
+    silent: true
