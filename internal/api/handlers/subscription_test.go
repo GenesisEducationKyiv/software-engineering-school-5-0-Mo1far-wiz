@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func TestMain(m *testing.M) {
@@ -80,6 +81,13 @@ func (n *noopTargetMgr) AddTarget(models.Subscription)             {}
 func (n *noopTargetMgr) RemoveTarget(string, string)               {}
 func (n *noopTargetMgr) GetTargets(_ string) []models.Subscription { return nil }
 
+type noopLogger struct{}
+
+func (n *noopLogger) ConsoleLogInfo(msg string, fields ...zap.Field)  {}
+func (n *noopLogger) ConsoleLogError(msg string, fields ...zap.Field) {}
+func (n *noopLogger) LogError(msg string, fields ...zap.Field)        {}
+func (n *noopLogger) LogInfo(msg string, fields ...zap.Field)         {}
+
 func TestCreateAndConfirm(t *testing.T) {
 	db := setupTestDB(t)
 	store := store.NewStorage(db)
@@ -124,8 +132,9 @@ func TestSubscribeHandler(t *testing.T) {
 	store := store.NewStorage(db)
 	emailer := &stubEmailSender{}
 	targetMgr := &noopTargetMgr{}
+	logger := &noopLogger{}
 
-	handler := handlers.NewSubscriptionHandler(store.Subscription, emailer, targetMgr)
+	handler := handlers.NewSubscriptionHandler(store.Subscription, emailer, targetMgr, logger)
 	router := gin.New()
 	router.POST("/subscribe", handler.Subscribe)
 

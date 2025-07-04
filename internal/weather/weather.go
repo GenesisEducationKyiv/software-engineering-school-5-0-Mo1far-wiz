@@ -2,95 +2,41 @@ package weather
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"weather/internal/config"
+	"errors"
 	"weather/internal/models"
 
-	joinErr "errors"
-
-	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
-type weatherAPIResponse struct {
-	Current struct {
-		TempC     float32 `json:"temp_c"`
-		TempF     float32 `json:"temp_f"`
-		Condition struct {
-			Text string `json:"text"`
-		} `json:"condition"`
-		Humidity int `json:"humidity"`
-	} `json:"current"`
+type Logger interface {
+	LogInfo(msg string, fields ...zap.Field)
+	LogError(msg string, fields ...zap.Field)
 }
 
-func (wa weatherAPIResponse) getWeatherModel() models.Weather {
-	return models.Weather{
-		Temperature: int(wa.Current.TempC),
-		Humidity:    wa.Current.Humidity,
-		Description: wa.Current.Condition.Text,
-	}
+type APIInterface interface {
+	GetCityWeather(ctx context.Context, city string) (models.Weather, error)
+	setNext(APIInterface)
 }
 
-type WeatherAPI struct {
-	baseURL string
-	apiKey  string
-	client  *http.Client
+type WeatherService struct {
+	head APIInterface
 }
 
-func NewWeatherAPI(config config.WeatherAPIConfig) *WeatherAPI {
-	return &WeatherAPI{
-		baseURL: config.ServiceBaseURL,
-		apiKey:  config.APIKey,
-		client:  http.DefaultClient,
-	}
+func (rs *WeatherService) GetCityWeather(ctx context.Context, city string) (models.Weather, error) {
+	return rs.head.GetCityWeather(ctx, city)
 }
 
-func (wa *WeatherAPI) WithClient(client *http.Client) *WeatherAPI {
-	wa.client = client
-	return wa
-}
-
-func (wa *WeatherAPI) GetCityWeather(ctx context.Context, city string) (weather models.Weather, err error) {
-	reqURL := wa.baseURL + "?key=" + wa.apiKey + "&q=" + city
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	if err != nil {
-		return models.Weather{}, errors.Wrap(err, "unable to create new GET request to weather api")
+func NewWeatherService(sources ...APIInterface) (*WeatherService, error) {
+	if len(sources) == 0 {
+		return nil, errors.New("need at least one API source")
 	}
 
-	resp, err := wa.client.Do(req)
-	if err != nil {
-		return models.Weather{}, errors.Wrap(err, "unable to send GET request to weather api")
+	rs := &WeatherService{}
+
+	for i := 0; i < len(sources)-1; i++ {
+		sources[i].setNext(sources[i+1])
 	}
 
-	defer func() {
-		closeErr := resp.Body.Close()
-		if closeErr != nil {
-			closeErr = errors.Wrap(closeErr, "failed to close response body")
-			if err != nil {
-				err = joinErr.Join(err, closeErr)
-			} else {
-				err = closeErr
-			}
-		}
-	}()
-
-	if resp.StatusCode == http.StatusBadRequest {
-		return models.Weather{}, fmt.Errorf("city not found: %s", city)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return models.Weather{}, errors.Wrap(err, "unable to read request body")
-	}
-
-	var weatherResp weatherAPIResponse
-	err = json.Unmarshal(body, &weatherResp)
-	if err != nil {
-		return models.Weather{}, errors.Wrap(err, "unable to unmarshal request body")
-	}
-
-	return weatherResp.getWeatherModel(), nil
+	rs.head = sources[0]
+	return rs, nil
 }

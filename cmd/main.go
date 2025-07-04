@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 	"weather/internal/application"
 	"weather/internal/config"
@@ -12,9 +13,12 @@ import (
 	"weather/internal/mailer"
 	"weather/internal/store"
 	"weather/internal/weather"
+	"weather/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
+
+const logFile = "weather.log"
 
 func getDatabaseConfig() config.DBConfig {
 	dbName := env.GetString("DB_NAME", "weather")
@@ -65,6 +69,17 @@ func getWeatherAPIConfig() config.WeatherAPIConfig {
 	}
 }
 
+func getVisualCrossingAPIConfig() config.WeatherAPIConfig {
+	weatherServiceURL := env.GetString("VISUALCROSSING_SERVICE_URL",
+		"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/")
+	weatherAPIKey := env.GetString("VISUALCROSSING_API_KEY", "fake-api-key")
+
+	return config.WeatherAPIConfig{
+		ServiceBaseURL: weatherServiceURL,
+		APIKey:         weatherAPIKey,
+	}
+}
+
 func getSMTPConfig() config.SMTPConfig {
 	smtpUser := env.GetString("SMTP_USER", "email")
 	smtpPassword := env.GetString("SMTP_PASS", "smash")
@@ -80,6 +95,11 @@ func getSMTPConfig() config.SMTPConfig {
 }
 
 func main() {
+	logger, err := logger.NewLogger(logFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	dbConfig := getDatabaseConfig()
 	appConfig := getApplicationConfig()
 
@@ -108,8 +128,44 @@ func main() {
 		}
 	}()
 
-	weatherServiceConfig := getWeatherAPIConfig()
-	weatherService := weather.NewRemoteService(weather.NewWeatherAPI(weatherServiceConfig))
+	defaultRT := http.DefaultTransport
+	t, ok := defaultRT.(*http.Transport)
+	if !ok {
+		log.Panicf(
+			"expected http.DefaultTransport to be *http.Transport, got %T",
+			defaultRT,
+		)
+	}
+	baseT := t.Clone()
+
+	weatherClient := &http.Client{
+		Transport: &weather.WeatherLoggingRoundTripper{
+			Base:    baseT,
+			Logger:  logger,
+			APIName: "WeatherAPI",
+		},
+	}
+
+	vcClient := &http.Client{
+		Transport: &weather.WeatherLoggingRoundTripper{
+			Base:    baseT,
+			Logger:  logger,
+			APIName: "VisualCrossing",
+		},
+	}
+
+	// primary
+	weatherAPIServiceConfig := getWeatherAPIConfig()
+	weatherAPI := weather.NewWeatherAPI(weatherAPIServiceConfig, logger).WithClient(weatherClient)
+
+	// secondary
+	visualCrossingServiceConfig := getVisualCrossingAPIConfig()
+	visualCrossing := weather.NewVisualCrossingAPI(visualCrossingServiceConfig, logger).WithClient(vcClient)
+
+	weatherService, err := weather.NewWeatherService(weatherAPI, visualCrossing)
+	if err != nil {
+		log.Panic(err)
+	}
 
 	smtpConfig := getSMTPConfig()
 	mailerService := mailer.New(smtpConfig, weatherService)
@@ -127,6 +183,7 @@ func main() {
 		Router:         gin.Default(),
 		WeatherService: weatherService,
 		MailerService:  mailerService,
+		Logger:         logger,
 	}
 
 	app.Run()

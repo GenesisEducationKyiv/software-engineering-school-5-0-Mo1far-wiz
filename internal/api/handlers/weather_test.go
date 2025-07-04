@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,6 +19,8 @@ import (
 func TestCityWeather_Success(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
+
+	logger := &noopLogger{}
 
 	expected := models.Weather{
 		Temperature: 13,
@@ -53,10 +56,13 @@ func TestCityWeather_Success(t *testing.T) {
 	api := weather.NewWeatherAPI(config.WeatherAPIConfig{
 		ServiceBaseURL: ts.URL,
 		APIKey:         "unused",
-	}).WithClient(ts.Client())
+	}, logger).WithClient(ts.Client())
 
-	svc := weather.NewRemoteService(api)
-	h := handlers.NewWeatherHandler(svc)
+	svc, err := weather.NewWeatherService(api)
+	if err != nil {
+		log.Panic(err)
+	}
+	h := handlers.NewWeatherHandler(svc, logger)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -86,8 +92,10 @@ func TestCityWeather_BadRequest(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
-	svc := &weather.RemoteService{}
-	h := handlers.NewWeatherHandler(svc)
+	logger := &noopLogger{}
+
+	svc := &weather.WeatherService{}
+	h := handlers.NewWeatherHandler(svc, logger)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -105,15 +113,20 @@ func TestCityWeather_NotFound(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
+	logger := &noopLogger{}
+
 	ts := httptest.NewServer(http.NotFoundHandler())
 	t.Cleanup(ts.Close)
 
 	api := weather.NewWeatherAPI(config.WeatherAPIConfig{
 		ServiceBaseURL: ts.URL,
 		APIKey:         "unused",
-	}).WithClient(ts.Client())
-	svc := weather.NewRemoteService(api)
-	h := handlers.NewWeatherHandler(svc)
+	}, logger).WithClient(ts.Client())
+	svc, err := weather.NewWeatherService(api)
+	if err != nil {
+		log.Panic(err)
+	}
+	h := handlers.NewWeatherHandler(svc, logger)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

@@ -35,7 +35,6 @@ func NewTestDB(dsn string, t *testing.T) *sql.DB {
 	}
 
 	migrationPath := getProjectRoot() + "/internal/database/migrations"
-	log.Println(migrationPath)
 
 	err = MigrateUp(dsn, migrationPath)
 	if err != nil {

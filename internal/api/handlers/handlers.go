@@ -1,7 +1,8 @@
 package handlers
 
-import "log"
+import "go.uber.org/zap"
 
-func logErrorF(err error, message string) {
-	log.Printf("ERROR: %s: %v", message, err)
+type Logger interface {
+	ConsoleLogInfo(msg string, fields ...zap.Field)
+	ConsoleLogError(msg string, fields ...zap.Field)
 }
