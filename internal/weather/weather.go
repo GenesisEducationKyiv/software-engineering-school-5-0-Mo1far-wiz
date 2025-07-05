@@ -36,7 +36,7 @@ func (rs *WeatherService) GetCityWeather(ctx context.Context, city string) (mode
 		return weather, nil
 	}
 	if !errors.Is(err, cache.ErrCacheMiss) {
-		return models.Weather{}, errors.Wrap(err, "weather cache")
+		rs.logger.LogError("cache service error", zap.Error(err))
 	}
 
 	weather, err := rs.head.GetCityWeather(ctx, city)

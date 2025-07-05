@@ -1,4 +1,3 @@
-// internal/redis/cache.go
 package redis
 
 import (

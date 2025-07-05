@@ -1,4 +1,3 @@
-// internal/cache/cache.go
 package cache
 
 import (
