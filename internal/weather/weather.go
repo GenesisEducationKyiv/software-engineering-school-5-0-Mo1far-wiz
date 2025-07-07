@@ -5,11 +5,7 @@ import (
 	"encoding/json"
 	"weather/internal/cache"
 	"weather/internal/models"
-<<<<<<< HEAD
 	"weather/internal/svc"
-=======
-	"weather/internal/srverrors"
->>>>>>> 633e62d (architecture image added + architecture tests and refactoring)
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -40,11 +36,7 @@ func (rs *WeatherAPIService) GetCityWeather(ctx context.Context, city string) (m
 		}
 		return weather, nil
 	}
-<<<<<<< HEAD
 	if !errors.Is(err, svc.ErrorCacheMiss) {
-=======
-	if !errors.Is(err, srverrors.ErrCacheMiss) {
->>>>>>> 633e62d (architecture image added + architecture tests and refactoring)
 		rs.logger.LogError("cache service error", zap.Error(err))
 	}
 
