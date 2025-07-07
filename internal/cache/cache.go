@@ -2,13 +2,10 @@ package cache
 
 import (
 	"context"
-	"errors"
 	"time"
 )
 
 const defaultTTL = time.Hour
-
-var ErrCacheMiss = errors.New("cache: key not found")
 
 type Cacher interface {
 	Set(ctx context.Context, key string, value string, ttl time.Duration) error

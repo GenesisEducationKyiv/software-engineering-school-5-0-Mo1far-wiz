@@ -12,6 +12,7 @@ import (
 	mock_cache "weather/internal/cache/mock"
 	"weather/internal/config"
 	"weather/internal/models"
+	"weather/internal/srverrors"
 	"weather/internal/weather"
 
 	"github.com/gin-gonic/gin"
@@ -62,7 +63,7 @@ func TestCityWeather_Success(t *testing.T) {
 	mockCacher.
 		EXPECT().
 		Get(gomock.Any(), "Kyiv").
-		Return("", cache.ErrCacheMiss)
+		Return("", srverrors.ErrCacheMiss)
 
 	payload, err := json.Marshal(expected)
 	assert.Nil(t, err)
@@ -139,7 +140,7 @@ func TestCityWeather_NotFound(t *testing.T) {
 	mockCacher.
 		EXPECT().
 		Get(gomock.Any(), "Gotham").
-		Return("", cache.ErrCacheMiss)
+		Return("", srverrors.ErrCacheMiss)
 
 	svc, err := weather.NewWeatherAPIService(cacheSvc, logger, api)
 	assert.NoError(t, err)
