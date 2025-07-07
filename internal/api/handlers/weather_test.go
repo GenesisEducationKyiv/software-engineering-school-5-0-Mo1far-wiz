@@ -12,7 +12,11 @@ import (
 	mock_cache "weather/internal/cache/mock"
 	"weather/internal/config"
 	"weather/internal/models"
+<<<<<<< HEAD
 	"weather/internal/svc"
+=======
+	"weather/internal/srverrors"
+>>>>>>> 633e62d (architecture image added + architecture tests and refactoring)
 	"weather/internal/weather"
 
 	"github.com/gin-gonic/gin"
@@ -63,7 +67,11 @@ func TestCityWeather_Success(t *testing.T) {
 	mockCacher.
 		EXPECT().
 		Get(gomock.Any(), "Kyiv").
+<<<<<<< HEAD
 		Return("", svc.ErrorCacheMiss)
+=======
+		Return("", srverrors.ErrCacheMiss)
+>>>>>>> 633e62d (architecture image added + architecture tests and refactoring)
 
 	payload, err := json.Marshal(expected)
 	assert.Nil(t, err)
@@ -140,7 +148,11 @@ func TestCityWeather_NotFound(t *testing.T) {
 	mockCacher.
 		EXPECT().
 		Get(gomock.Any(), "Gotham").
+<<<<<<< HEAD
 		Return("", svc.ErrorCacheMiss)
+=======
+		Return("", srverrors.ErrCacheMiss)
+>>>>>>> 633e62d (architecture image added + architecture tests and refactoring)
 
 	svc, err := weather.NewWeatherAPIService(cacheSvc, logger, api)
 	assert.NoError(t, err)
