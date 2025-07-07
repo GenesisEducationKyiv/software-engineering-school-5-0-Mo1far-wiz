@@ -11,6 +11,7 @@ type WeatherLoggingRoundTripper struct {
 	Base    http.RoundTripper
 	Logger  Logger
 	APIName string
+	URL     string
 }
 
 func (w *WeatherLoggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -57,9 +58,9 @@ func (w *WeatherLoggingRoundTripper) RoundTrip(req *http.Request) (*http.Respons
 	}
 
 	logLine := fmt.Sprintf(
-		"%s – URL=%s | Status=%d | RequestBody=%q | ResponseBody=%q",
+		"%s\n\tURL:\t%s \n\tStatus:\t%d \n\tRequestBody:\t%q \n\tResponseBody:\t%q",
 		w.APIName,
-		req.URL.String(),
+		w.URL,
 		resp.StatusCode,
 		string(reqBody),
 		string(respBody),
