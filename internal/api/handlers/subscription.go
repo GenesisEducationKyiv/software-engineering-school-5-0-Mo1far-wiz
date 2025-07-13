@@ -72,8 +72,14 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 
 	err := s.subscription.Subscribe(c.Request.Context(), subscription)
 	if err != nil {
+<<<<<<< HEAD
 		switch {
 		case errors.Is(err, svc.ErrorAlreadyExists):
+=======
+		s.logger.ConsoleLogError("can't create subscription",
+			zap.String("error", err.Error()))
+		if errors.Is(err, svc.ErrorAlreadyExists) {
+>>>>>>> ec49c67 (refactoring + moving logic to service from handler)
 			c.JSON(http.StatusConflict, "Email already subscribed")
 		case errors.Is(err, svc.ErrorSubscriptionCreate):
 			c.JSON(http.StatusInternalServerError, "Can't create subscription")

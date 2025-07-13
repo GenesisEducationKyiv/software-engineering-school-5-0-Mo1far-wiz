@@ -62,22 +62,38 @@ func getApplicationConfig() config.ApplicationConfig {
 }
 
 func getWeatherAPIConfig() config.WeatherAPIConfig {
+<<<<<<< HEAD
 	weatherAPIServiceURL := env.GetString("WEATHER_SERVICE_URL", "http://api.weatherapi.com/v1/current.json")
 	weatherAPIKey := env.GetString("WEATHER_API_KEY", "fake-api-key")
 
 	return config.WeatherAPIConfig{
 		ServiceBaseURL: weatherAPIServiceURL,
+=======
+	WeatherAPIServiceURL := env.GetString("WEATHER_SERVICE_URL", "http://api.weatherapi.com/v1/current.json")
+	weatherAPIKey := env.GetString("WEATHER_API_KEY", "fake-api-key")
+
+	return config.WeatherAPIConfig{
+		ServiceBaseURL: WeatherAPIServiceURL,
+>>>>>>> ec49c67 (refactoring + moving logic to service from handler)
 		APIKey:         weatherAPIKey,
 	}
 }
 
 func getVisualCrossingAPIConfig() config.WeatherAPIConfig {
+<<<<<<< HEAD
 	weatherAPIServiceURL := env.GetString("VISUALCROSSING_SERVICE_URL",
+=======
+	WeatherAPIServiceURL := env.GetString("VISUALCROSSING_SERVICE_URL",
+>>>>>>> ec49c67 (refactoring + moving logic to service from handler)
 		"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/")
 	weatherAPIKey := env.GetString("VISUALCROSSING_API_KEY", "fake-api-key")
 
 	return config.WeatherAPIConfig{
+<<<<<<< HEAD
 		ServiceBaseURL: weatherAPIServiceURL,
+=======
+		ServiceBaseURL: WeatherAPIServiceURL,
+>>>>>>> ec49c67 (refactoring + moving logic to service from handler)
 		APIKey:         weatherAPIKey,
 	}
 }
@@ -184,13 +200,21 @@ func main() {
 
 	cacheService := cache.NewCacheService(redis)
 
+<<<<<<< HEAD
 	weatherAPIService, err := weather.NewWeatherAPIService(cacheService, logger, weatherAPI, visualCrossing)
+=======
+	WeatherAPIService, err := weather.NewWeatherAPIService(cacheService, logger, weatherAPI, visualCrossing)
+>>>>>>> ec49c67 (refactoring + moving logic to service from handler)
 	if err != nil {
 		log.Panic(err)
 	}
 
 	smtpConfig := getSMTPConfig()
+<<<<<<< HEAD
 	mailerService := mailer.New(smtpConfig, weatherAPIService)
+=======
+	mailerService := mailer.New(smtpConfig, WeatherAPIService)
+>>>>>>> ec49c67 (refactoring + moving logic to service from handler)
 
 	ctx, cancel := context.WithTimeout(context.Background(), mailer.LoadTimeoutDuration)
 	err = mailerService.LoadTargets(ctx, store.Mailer)
@@ -203,7 +227,11 @@ func main() {
 		Config:            appConfig,
 		Store:             store,
 		Router:            gin.Default(),
+<<<<<<< HEAD
 		WeatherAPIService: weatherAPIService,
+=======
+		WeatherAPIService: WeatherAPIService,
+>>>>>>> ec49c67 (refactoring + moving logic to service from handler)
 		MailerService:     mailerService,
 		Logger:            logger,
 	}
