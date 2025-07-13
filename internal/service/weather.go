@@ -10,19 +10,19 @@ import (
 	"go.uber.org/zap"
 )
 
-type WeatherService struct {
+type Weather struct {
 	weatherAPIService *weather.WeatherAPIService
 	logger            Logger
 }
 
-func NewWeatherService(WeatherAPIService *weather.WeatherAPIService, logger Logger) *WeatherService {
-	return &WeatherService{
-		weatherAPIService: WeatherAPIService,
+func NewWeather(weatherAPIService *weather.WeatherAPIService, logger Logger) *Weather {
+	return &Weather{
+		weatherAPIService: weatherAPIService,
 		logger:            logger,
 	}
 }
 
-func (w *WeatherService) GetCityWeather(ctx context.Context, city string) (models.Weather, error) {
+func (w *Weather) GetCityWeather(ctx context.Context, city string) (models.Weather, error) {
 	weather, err := w.weatherAPIService.GetCityWeather(ctx, city)
 	if err != nil {
 		w.logger.ConsoleLogError("on getting city weather",

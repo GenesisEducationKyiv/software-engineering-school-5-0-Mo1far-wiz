@@ -1,22 +1,29 @@
 package handlers
 
 import (
+	"context"
+	"errors"
 	"net/http"
-	"weather/internal/weather"
+	"weather/internal/models"
+	"weather/internal/svc"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-type WeatherHandler struct {
-	weatherService *weather.WeatherService
-	logger         Logger
+type WeatherService interface {
+	GetCityWeather(ctx context.Context, city string) (models.Weather, error)
 }
 
-func NewWeatherHandler(weatherService *weather.WeatherService, logger Logger) *WeatherHandler {
+type WeatherHandler struct {
+	weather WeatherService
+	logger  Logger
+}
+
+func NewWeatherHandler(weather WeatherService, logger Logger) *WeatherHandler {
 	return &WeatherHandler{
-		weatherService: weatherService,
-		logger:         logger,
+		weather: weather,
+		logger:  logger,
 	}
 }
 
@@ -27,12 +34,16 @@ func (h *WeatherHandler) CityWeather(c *gin.Context) {
 		return
 	}
 
-	weather, err := h.weatherService.GetCityWeather(c.Request.Context(), city)
+	weather, err := h.weather.GetCityWeather(c.Request.Context(), city)
 	if err != nil {
-		h.logger.ConsoleLogError("on getting city weather",
-			zap.String("error", err.Error()))
-		c.JSON(http.StatusNotFound, "City not found")
-		return
+		switch {
+		case errors.Is(err, svc.ErrorGetCityWeather):
+			c.JSON(http.StatusNotFound, "City not found")
+		default:
+			c.JSON(http.StatusInternalServerError, "Internal service error")
+			h.logger.ConsoleLogError("Uncaught error, sending StatusInternalServerError",
+				zap.String("error", err.Error()))
+		}
 	}
 
 	c.JSON(http.StatusOK, weather)

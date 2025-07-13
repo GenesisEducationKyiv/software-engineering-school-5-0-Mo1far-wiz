@@ -31,8 +31,8 @@ type Manager struct {
 	running  bool
 }
 
-func New(config config.SMTPConfig, weatherService *weather.WeatherService) *Manager {
-	forecaster := NewForecaster(weatherService)
+func New(config config.SMTPConfig, weatherAPIService *weather.WeatherAPIService) *Manager {
+	forecaster := NewForecaster(weatherAPIService)
 	mailer := NewSMTPMailer(config, NewEmailBuilder())
 
 	return &Manager{

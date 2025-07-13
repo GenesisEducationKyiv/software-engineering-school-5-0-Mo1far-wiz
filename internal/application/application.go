@@ -11,6 +11,7 @@ import (
 	"weather/internal/api"
 	"weather/internal/config"
 	"weather/internal/mailer"
+	"weather/internal/service"
 	"weather/internal/store"
 	"weather/internal/weather"
 
@@ -27,13 +28,13 @@ type Logger interface {
 }
 
 type Application struct {
-	Config         config.ApplicationConfig
-	Store          store.Storage
-	Router         *gin.Engine
-	server         *http.Server
-	WeatherService *weather.WeatherService
-	MailerService  *mailer.Manager
-	Logger         Logger
+	Config            config.ApplicationConfig
+	Store             store.Storage
+	Router            *gin.Engine
+	server            *http.Server
+	WeatherAPIService *weather.WeatherAPIService
+	MailerService     *mailer.Manager
+	Logger            Logger
 }
 
 func (a *Application) Initialize() {
@@ -45,12 +46,18 @@ func (a *Application) Initialize() {
 		IdleTimeout:  a.Config.IdleTimeout,
 	}
 
-	api.Mount(
-		a.Router,
+	weatherService := service.NewWeather(a.WeatherAPIService, a.Logger)
+	subscriptionService := service.NewSubscription(
 		a.Store.Subscription,
-		a.WeatherService,
 		a.MailerService.Mailer,
 		a.MailerService.Targets,
+		a.Logger,
+	)
+
+	api.Mount(
+		a.Router,
+		weatherService,
+		subscriptionService,
 		a.Logger,
 	)
 }

@@ -10,10 +10,10 @@ import (
 )
 
 type Forecaster struct {
-	weather *weather.WeatherService
+	weather *weather.WeatherAPIService
 }
 
-func NewForecaster(weather *weather.WeatherService) *Forecaster {
+func NewForecaster(weather *weather.WeatherAPIService) *Forecaster {
 	return &Forecaster{
 		weather: weather,
 	}

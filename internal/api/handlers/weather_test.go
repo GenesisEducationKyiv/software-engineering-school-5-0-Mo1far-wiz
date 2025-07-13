@@ -72,9 +72,9 @@ func TestCityWeather_Success(t *testing.T) {
 		Set(gomock.Any(), "Kyiv", string(payload), time.Hour).
 		Return(nil)
 
-	svc, err := weather.NewWeatherService(cacheSvc, logger, api)
+	svc, err := weather.NewWeatherAPIService(cacheSvc, logger, api)
 	if err != nil {
-		t.Fatalf("failed to create WeatherService: %v", err)
+		t.Fatalf("failed to create WeatherAPIService: %v", err)
 	}
 	h := handlers.NewWeatherHandler(svc, logger)
 
@@ -101,7 +101,7 @@ func TestCityWeather_BadRequest(t *testing.T) {
 
 	logger := &noopLogger{}
 
-	svc := &weather.WeatherService{}
+	svc := &weather.WeatherAPIService{}
 	h := handlers.NewWeatherHandler(svc, logger)
 
 	w := httptest.NewRecorder()
@@ -141,7 +141,7 @@ func TestCityWeather_NotFound(t *testing.T) {
 		Get(gomock.Any(), "Gotham").
 		Return("", cache.ErrCacheMiss)
 
-	svc, err := weather.NewWeatherService(cacheSvc, logger, api)
+	svc, err := weather.NewWeatherAPIService(cacheSvc, logger, api)
 	assert.NoError(t, err)
 	h := handlers.NewWeatherHandler(svc, logger)
 

@@ -14,6 +14,7 @@ import (
 	"weather/internal/api/handlers"
 	"weather/internal/database"
 	"weather/internal/models"
+	"weather/internal/service"
 	"weather/internal/store"
 
 	"github.com/gin-gonic/gin"
@@ -134,7 +135,9 @@ func TestSubscribeHandler(t *testing.T) {
 	targetMgr := &noopTargetMgr{}
 	logger := &noopLogger{}
 
-	handler := handlers.NewSubscriptionHandler(store.Subscription, emailer, targetMgr, logger)
+	subscriptionService := service.NewSubscription(store.Subscription, emailer, targetMgr, logger)
+
+	handler := handlers.NewSubscriptionHandler(subscriptionService, logger)
 	router := gin.New()
 	router.POST("/subscribe", handler.Subscribe)
 

@@ -62,22 +62,22 @@ func getApplicationConfig() config.ApplicationConfig {
 }
 
 func getWeatherAPIConfig() config.WeatherAPIConfig {
-	WeatherAPIServiceURL := env.GetString("WEATHER_SERVICE_URL", "http://api.weatherapi.com/v1/current.json")
+	weatherAPIServiceURL := env.GetString("WEATHER_SERVICE_URL", "http://api.weatherapi.com/v1/current.json")
 	weatherAPIKey := env.GetString("WEATHER_API_KEY", "fake-api-key")
 
 	return config.WeatherAPIConfig{
-		ServiceBaseURL: WeatherAPIServiceURL,
+		ServiceBaseURL: weatherAPIServiceURL,
 		APIKey:         weatherAPIKey,
 	}
 }
 
 func getVisualCrossingAPIConfig() config.WeatherAPIConfig {
-	WeatherAPIServiceURL := env.GetString("VISUALCROSSING_SERVICE_URL",
+	weatherAPIServiceURL := env.GetString("VISUALCROSSING_SERVICE_URL",
 		"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/")
 	weatherAPIKey := env.GetString("VISUALCROSSING_API_KEY", "fake-api-key")
 
 	return config.WeatherAPIConfig{
-		ServiceBaseURL: WeatherAPIServiceURL,
+		ServiceBaseURL: weatherAPIServiceURL,
 		APIKey:         weatherAPIKey,
 	}
 }
@@ -184,13 +184,13 @@ func main() {
 
 	cacheService := cache.NewCacheService(redis)
 
-	WeatherAPIService, err := weather.NewWeatherAPIService(cacheService, logger, weatherAPI, visualCrossing)
+	weatherAPIService, err := weather.NewWeatherAPIService(cacheService, logger, weatherAPI, visualCrossing)
 	if err != nil {
 		log.Panic(err)
 	}
 
 	smtpConfig := getSMTPConfig()
-	mailerService := mailer.New(smtpConfig, WeatherAPIService)
+	mailerService := mailer.New(smtpConfig, weatherAPIService)
 
 	ctx, cancel := context.WithTimeout(context.Background(), mailer.LoadTimeoutDuration)
 	err = mailerService.LoadTargets(ctx, store.Mailer)
@@ -203,7 +203,7 @@ func main() {
 		Config:            appConfig,
 		Store:             store,
 		Router:            gin.Default(),
-		WeatherAPIService: WeatherAPIService,
+		WeatherAPIService: weatherAPIService,
 		MailerService:     mailerService,
 		Logger:            logger,
 	}

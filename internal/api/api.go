@@ -3,23 +3,20 @@ package api
 import (
 	"weather/internal/api/handlers"
 	"weather/internal/api/middleware"
-	"weather/internal/weather"
 
 	"github.com/gin-gonic/gin"
 )
 
 func Mount(
 	router *gin.Engine,
-	storage handlers.SubscriptionStore,
-	weatherService *weather.WeatherService,
-	emailSender handlers.EmailSender,
-	targetManager handlers.SubscriptionTargetManager,
+	weatherService handlers.WeatherService,
+	subscriptionService handlers.SubscriptionService,
 	logger handlers.Logger,
 ) {
 	gin.SetMode(gin.ReleaseMode)
 
 	weatherHandler := handlers.NewWeatherHandler(weatherService, logger)
-	subscriptionHandler := handlers.NewSubscriptionHandler(storage, emailSender, targetManager, logger)
+	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService, logger)
 
 	api := router.Group("/api")
 

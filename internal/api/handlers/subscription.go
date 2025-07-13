@@ -13,26 +13,15 @@ import (
 	"go.uber.org/zap"
 )
 
-type SubscriptionStore interface {
-	Create(context.Context, *models.Subscription) error
-	Confirm(ctx context.Context, token string) (models.Subscription, error)
-	Unsubscribe(ctx context.Context, token string) (models.Subscription, error)
-}
-
-type EmailSender interface {
-	SendEmail(to, subject, body string) (err error)
-}
-
-type SubscriptionTargetManager interface {
-	AddTarget(sub models.Subscription)
-	RemoveTarget(email string, frequency string)
+type SubscriptionService interface {
+	Subscribe(ctx context.Context, subscription models.Subscription) error
+	Confirm(ctx context.Context, token string) error
+	Unsubscribe(ctx context.Context, token string) error
 }
 
 type SubscriptionHandler struct {
-	store         SubscriptionStore
-	targetManager SubscriptionTargetManager
-	emailSender   EmailSender
-	logger        Logger
+	subscription SubscriptionService
+	logger       Logger
 }
 
 type subscribeRequest struct {
@@ -56,16 +45,12 @@ func ValidateToken(c *gin.Context) (string, error) {
 }
 
 func NewSubscriptionHandler(
-	store SubscriptionStore,
-	emailSender EmailSender,
-	targetManager SubscriptionTargetManager,
+	service SubscriptionService,
 	logger Logger,
 ) *SubscriptionHandler {
 	return &SubscriptionHandler{
-		store:         store,
-		emailSender:   emailSender,
-		targetManager: targetManager,
-		logger:        logger,
+		subscription: service,
+		logger:       logger,
 	}
 }
 
@@ -85,23 +70,20 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 		Token:     SHA256Token(req.Email + req.City + req.Frequency),
 	}
 
-	err := s.store.Create(c.Request.Context(), &subscription)
+	err := s.subscription.Subscribe(c.Request.Context(), subscription)
 	if err != nil {
-		s.logger.ConsoleLogError("can't create subscription",
-			zap.String("error", err.Error()))
-		if errors.Is(err, svc.ErrorAlreadyExists) {
+		switch {
+		case errors.Is(err, svc.ErrorAlreadyExists):
 			c.JSON(http.StatusConflict, "Email already subscribed")
-		} else {
+		case errors.Is(err, svc.ErrorSubscriptionCreate):
 			c.JSON(http.StatusInternalServerError, "Can't create subscription")
+		case errors.Is(err, svc.ErrorSendEmail):
+			c.JSON(http.StatusInternalServerError, "Can't send email")
+		default:
+			c.JSON(http.StatusInternalServerError, "Internal service error")
+			s.logger.ConsoleLogError("Uncaught error, sending StatusInternalServerError",
+				zap.String("error", err.Error()))
 		}
-		return
-	}
-
-	err = s.emailSender.SendEmail(subscription.Email, "Your token", subscription.Token)
-	if err != nil {
-		s.logger.ConsoleLogError("failed to send confirmation email",
-			zap.String("error", err.Error()))
-		c.JSON(http.StatusInternalServerError, "Can't send email")
 		return
 	}
 
@@ -115,15 +97,18 @@ func (s *SubscriptionHandler) Confirm(c *gin.Context) {
 		return
 	}
 
-	sub, err := s.store.Confirm(c.Request.Context(), token)
+	err = s.subscription.Confirm(c.Request.Context(), token)
 	if err != nil {
-		s.logger.ConsoleLogError("can't confirm subscription",
-			zap.String("error", err.Error()))
-		c.JSON(http.StatusNotFound, "Can't confirm subscription")
+		switch {
+		case errors.Is(err, svc.ErrorSubscriptionConfirm):
+			c.JSON(http.StatusNotFound, "Can't confirm subscription")
+		default:
+			c.JSON(http.StatusInternalServerError, "Internal service error")
+			s.logger.ConsoleLogError("Uncaught error, sending StatusInternalServerError",
+				zap.String("error", err.Error()))
+		}
 		return
 	}
-
-	s.targetManager.AddTarget(sub)
 
 	c.JSON(http.StatusOK, "Subscription confirmed successfully")
 }
@@ -135,15 +120,18 @@ func (s *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 		return
 	}
 
-	sub, err := s.store.Unsubscribe(c.Request.Context(), token)
+	err = s.subscription.Unsubscribe(c.Request.Context(), token)
 	if err != nil {
-		s.logger.ConsoleLogError("can't cancel subscription",
-			zap.String("error", err.Error()))
-		c.JSON(http.StatusNotFound, "Can't cancel subscription")
+		switch {
+		case errors.Is(err, svc.ErrorSubscriptionUnsubscribe):
+			c.JSON(http.StatusNotFound, "Can't cancel subscription")
+		default:
+			c.JSON(http.StatusInternalServerError, "Internal service error")
+			s.logger.ConsoleLogError("Uncaught error, sending StatusInternalServerError",
+				zap.String("error", err.Error()))
+		}
 		return
 	}
-
-	s.targetManager.RemoveTarget(sub.Email, sub.Frequency)
 
 	c.JSON(http.StatusOK, "Unsubscribed successfully")
 }
