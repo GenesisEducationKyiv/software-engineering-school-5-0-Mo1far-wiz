@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 	"weather/internal/config"
-	"weather/internal/srverrors"
+	"weather/internal/svc"
 
 	redisGo "github.com/redis/go-redis/v9"
 )
@@ -29,7 +29,7 @@ func (r *Redis) Set(ctx context.Context, key, value string, ttl time.Duration) e
 func (r *Redis) Get(ctx context.Context, key string) (string, error) {
 	val, err := r.client.Get(ctx, key).Result()
 	if err == redisGo.Nil {
-		return "", srverrors.ErrCacheMiss
+		return "", svc.ErrorCacheMiss
 	}
 	return val, err
 }

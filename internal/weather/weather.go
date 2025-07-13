@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"weather/internal/cache"
 	"weather/internal/models"
-	"weather/internal/srverrors"
+	"weather/internal/svc"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -36,7 +36,7 @@ func (rs *WeatherAPIService) GetCityWeather(ctx context.Context, city string) (m
 		}
 		return weather, nil
 	}
-	if !errors.Is(err, srverrors.ErrCacheMiss) {
+	if !errors.Is(err, svc.ErrorCacheMiss) {
 		rs.logger.LogError("cache service error", zap.Error(err))
 	}
 
