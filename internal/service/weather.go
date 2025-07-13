@@ -11,14 +11,19 @@ import (
 )
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 type Weather struct {
 =======
 type WeatherService struct {
 >>>>>>> ec49c67 (refactoring + moving logic to service from handler)
+=======
+type Weather struct {
+>>>>>>> 8d3b469 (services implemented)
 	weatherAPIService *weather.WeatherAPIService
 	logger            Logger
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 func NewWeather(weatherAPIService *weather.WeatherAPIService, logger Logger) *Weather {
 	return &Weather{
@@ -28,15 +33,24 @@ func NewWeatherService(WeatherAPIService *weather.WeatherAPIService, logger Logg
 	return &WeatherService{
 		weatherAPIService: WeatherAPIService,
 >>>>>>> ec49c67 (refactoring + moving logic to service from handler)
+=======
+func NewWeather(weatherAPIService *weather.WeatherAPIService, logger Logger) *Weather {
+	return &Weather{
+		weatherAPIService: weatherAPIService,
+>>>>>>> 8d3b469 (services implemented)
 		logger:            logger,
 	}
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 func (w *Weather) GetCityWeather(ctx context.Context, city string) (models.Weather, error) {
 =======
 func (w *WeatherService) GetCityWeather(ctx context.Context, city string) (models.Weather, error) {
 >>>>>>> ec49c67 (refactoring + moving logic to service from handler)
+=======
+func (w *Weather) GetCityWeather(ctx context.Context, city string) (models.Weather, error) {
+>>>>>>> 8d3b469 (services implemented)
 	weather, err := w.weatherAPIService.GetCityWeather(ctx, city)
 	if err != nil {
 		w.logger.ConsoleLogError("on getting city weather",
