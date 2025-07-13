@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"weather/internal/models"
-	"weather/internal/srverrors"
+	"weather/internal/svc"
 
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
@@ -44,7 +44,7 @@ func (ss *SubscriptionStore) Create(ctx context.Context, sub *models.Subscriptio
 	if err != nil {
 		if pgErr, ok := err.(*pq.Error); ok {
 			if pgErr.Code == pgAlreadyExistsCode && pgErr.Constraint == pgAlreadyExistsConstraint {
-				return srverrors.ErrorAlreadyExists
+				return svc.ErrorAlreadyExists
 			}
 		}
 		return errors.Wrap(err, "failed to create subscription")
@@ -71,7 +71,7 @@ func (ss *SubscriptionStore) Confirm(ctx context.Context, token string) (models.
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return models.Subscription{}, srverrors.ErrorNotFound
+			return models.Subscription{}, svc.ErrorNotFound
 		}
 		return models.Subscription{}, errors.Wrap(err, "failed to confirm subscription")
 	}
@@ -97,7 +97,7 @@ func (ss *SubscriptionStore) Unsubscribe(ctx context.Context, token string) (mod
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return models.Subscription{}, srverrors.ErrorNotFound
+			return models.Subscription{}, svc.ErrorNotFound
 		}
 		return models.Subscription{}, errors.Wrap(err, "failed to unsubscribe")
 	}

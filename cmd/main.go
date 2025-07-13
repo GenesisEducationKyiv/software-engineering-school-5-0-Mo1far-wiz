@@ -12,10 +12,10 @@ import (
 	"weather/internal/database"
 	"weather/internal/env"
 	"weather/internal/mailer"
-	"weather/internal/redis"
 	"weather/internal/store"
 	"weather/internal/weather"
 	"weather/pkg/logger"
+	"weather/pkg/redis"
 
 	"github.com/gin-gonic/gin"
 )
@@ -62,22 +62,22 @@ func getApplicationConfig() config.ApplicationConfig {
 }
 
 func getWeatherAPIConfig() config.WeatherAPIConfig {
-	weatherServiceURL := env.GetString("WEATHER_SERVICE_URL", "http://api.weatherapi.com/v1/current.json")
+	WeatherAPIServiceURL := env.GetString("WEATHER_SERVICE_URL", "http://api.weatherapi.com/v1/current.json")
 	weatherAPIKey := env.GetString("WEATHER_API_KEY", "fake-api-key")
 
 	return config.WeatherAPIConfig{
-		ServiceBaseURL: weatherServiceURL,
+		ServiceBaseURL: WeatherAPIServiceURL,
 		APIKey:         weatherAPIKey,
 	}
 }
 
 func getVisualCrossingAPIConfig() config.WeatherAPIConfig {
-	weatherServiceURL := env.GetString("VISUALCROSSING_SERVICE_URL",
+	WeatherAPIServiceURL := env.GetString("VISUALCROSSING_SERVICE_URL",
 		"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/")
 	weatherAPIKey := env.GetString("VISUALCROSSING_API_KEY", "fake-api-key")
 
 	return config.WeatherAPIConfig{
-		ServiceBaseURL: weatherServiceURL,
+		ServiceBaseURL: WeatherAPIServiceURL,
 		APIKey:         weatherAPIKey,
 	}
 }
@@ -184,13 +184,13 @@ func main() {
 
 	cacheService := cache.NewCacheService(redis)
 
-	weatherService, err := weather.NewWeatherService(cacheService, logger, weatherAPI, visualCrossing)
+	WeatherAPIService, err := weather.NewWeatherAPIService(cacheService, logger, weatherAPI, visualCrossing)
 	if err != nil {
 		log.Panic(err)
 	}
 
 	smtpConfig := getSMTPConfig()
-	mailerService := mailer.New(smtpConfig, weatherService)
+	mailerService := mailer.New(smtpConfig, WeatherAPIService)
 
 	ctx, cancel := context.WithTimeout(context.Background(), mailer.LoadTimeoutDuration)
 	err = mailerService.LoadTargets(ctx, store.Mailer)
@@ -200,12 +200,12 @@ func main() {
 	}
 
 	app := application.Application{
-		Config:         appConfig,
-		Store:          store,
-		Router:         gin.Default(),
-		WeatherService: weatherService,
-		MailerService:  mailerService,
-		Logger:         logger,
+		Config:            appConfig,
+		Store:             store,
+		Router:            gin.Default(),
+		WeatherAPIService: WeatherAPIService,
+		MailerService:     mailerService,
+		Logger:            logger,
 	}
 
 	app.Run()

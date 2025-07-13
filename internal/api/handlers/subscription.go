@@ -7,7 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"weather/internal/models"
-	"weather/internal/srverrors"
+	"weather/internal/svc"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -49,7 +49,7 @@ func SHA256Token(input string) string {
 func ValidateToken(c *gin.Context) (string, error) {
 	token := c.GetString("token")
 	if token == "" || token == ":token" {
-		return "", srverrors.ErrorTokenNotFound
+		return "", svc.ErrorTokenNotFound
 	}
 
 	return token, nil
@@ -89,7 +89,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 	if err != nil {
 		s.logger.ConsoleLogError("can't create subscription",
 			zap.String("error", err.Error()))
-		if errors.Is(err, srverrors.ErrorAlreadyExists) {
+		if errors.Is(err, svc.ErrorAlreadyExists) {
 			c.JSON(http.StatusConflict, "Email already subscribed")
 		} else {
 			c.JSON(http.StatusInternalServerError, "Can't create subscription")
