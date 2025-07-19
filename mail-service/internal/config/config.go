@@ -1,12 +1,7 @@
 package config
 
-import "time"
-
 type ApplicationConfig struct {
-	Addr         string
-	WriteTimeout time.Duration
-	ReadTimeout  time.Duration
-	IdleTimeout  time.Duration
+	Addr string
 }
 
 type SMTPConfig struct {

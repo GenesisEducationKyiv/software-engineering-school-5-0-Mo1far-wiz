@@ -32,7 +32,7 @@ type Application struct {
 	server   *grpc.Server
 	listener net.Listener
 	Logger   Logger
-	mailer   pb.MailServiceServer
+	Mailer   pb.MailServiceServer
 }
 
 func (a *Application) Initialize() {
@@ -44,7 +44,7 @@ func (a *Application) Initialize() {
 	a.listener = lis
 
 	a.server = grpc.NewServer()
-	pb.RegisterMailServiceServer(a.server, a.mailer)
+	pb.RegisterMailServiceServer(a.server, a.Mailer)
 }
 
 func (a *Application) Run() {
