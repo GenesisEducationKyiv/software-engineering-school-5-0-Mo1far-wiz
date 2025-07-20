@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
-	"weather/internal/models"
+	"weather-subscription/internal/models"
 
 	joinErr "errors"
 
