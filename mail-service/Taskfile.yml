@@ -1,6 +1,6 @@
-version: '3'
+version: "3"
 
-default: [build]
+# default: [build]
 
 dotenv:
   - .env
@@ -15,10 +15,10 @@ tasks:
     cmds:
       - mkdir -p {{.PROTO_OUT}}
       - protoc \
-          -I {{.PROTO_DIR}} \
-          --go_out=paths=source_relative:{{.PROTO_OUT}} \
-          --go-grpc_out=paths=source_relative:{{.PROTO_OUT}} \
-          {{.PROTO_DIR}}/mailer.proto
+        -I {{.PROTO_DIR}} \
+        --go_out=paths=source_relative:{{.PROTO_OUT}} \
+        --go-grpc_out=paths=source_relative:{{.PROTO_OUT}} \
+        {{.PROTO_DIR}}/mailer.proto
 
   build:
     desc: Build the mail-service binary
