@@ -6,6 +6,7 @@ import (
 	"pkg/protos/mailer"
 	"sync"
 	"time"
+	"weather-subscription/internal/config"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -21,7 +22,7 @@ type logger interface {
 }
 
 type MailService struct {
-	config string
+	config config.GRPCConfig
 	logger logger
 
 	conn   *grpc.ClientConn
@@ -30,7 +31,7 @@ type MailService struct {
 	mu     sync.RWMutex
 }
 
-func NewMailService(cfg string, logger logger) *MailService {
+func NewMailService(cfg config.GRPCConfig, logger logger) *MailService {
 	return &MailService{
 		config: cfg,
 		logger: logger,
@@ -45,7 +46,7 @@ func (ms *MailService) Connect(ctx context.Context) error {
 		return nil
 	}
 
-	conn, err := grpc.NewClient(ms.config,
+	conn, err := grpc.NewClient(ms.config.Addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -55,7 +56,7 @@ func (ms *MailService) Connect(ctx context.Context) error {
 
 	ms.conn = conn
 	ms.client = mailer.NewMailServiceClient(conn)
-	ms.logger.LogInfo("Connected to mail service", zap.String("address", ms.config))
+	ms.logger.LogInfo("Connected to mail service", zap.String("address", ms.config.Addr))
 
 	return nil
 }

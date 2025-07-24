@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"pkg/env"
+	"pkg/logger"
 	"time"
 	"weather-subscription/internal/application"
 	"weather-subscription/internal/cache"
@@ -15,8 +16,6 @@ import (
 	"weather-subscription/internal/store"
 	"weather-subscription/internal/weather"
 	"weather-subscription/pkg/redis"
-
-	"pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -83,17 +82,11 @@ func getVisualCrossingAPIConfig() config.WeatherAPIConfig {
 	}
 }
 
-func getSMTPConfig() config.SMTPConfig {
-	smtpUser := env.GetString("SMTP_USER", "email")
-	smtpPassword := env.GetString("SMTP_PASS", "smash")
-	smtpHost := env.GetString("SMTP_HOST", "host")
-	smtpPort := env.GetString("SMTP_PORT", "port")
+func getGRPCConfig() config.GRPCConfig {
+	grpcAddr := env.GetString("GRPC_ADDR", "addr")
 
-	return config.SMTPConfig{
-		SMTPUser:     smtpUser,
-		SMTPPassword: smtpPassword,
-		SMTPHost:     smtpHost,
-		SMTPPort:     smtpPort,
+	return config.GRPCConfig{
+		Addr: grpcAddr,
 	}
 }
 
@@ -110,7 +103,6 @@ func getRedisConfig() config.RedisConfig {
 }
 
 func main() {
-
 	logger, err := logger.NewLogger(logFile)
 	if err != nil {
 		log.Fatal(err)
@@ -191,8 +183,8 @@ func main() {
 		log.Panic(err)
 	}
 
-	smtpConfig := getSMTPConfig()
-	mailerService := mailer.New(smtpConfig, weatherAPIService)
+	grpcConfig := getGRPCConfig()
+	mailerService := mailer.New(grpcConfig, weatherAPIService, logger)
 
 	ctx, cancel := context.WithTimeout(context.Background(), mailer.LoadTimeoutDuration)
 	err = mailerService.LoadTargets(ctx, store.Mailer)

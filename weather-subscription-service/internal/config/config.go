@@ -35,3 +35,7 @@ type RedisConfig struct {
 	Password string
 	DB       int
 }
+
+type GRPCConfig struct {
+	Addr string
+}

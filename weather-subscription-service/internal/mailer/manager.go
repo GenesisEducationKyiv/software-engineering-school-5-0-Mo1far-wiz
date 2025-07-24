@@ -2,19 +2,25 @@ package mailer
 
 import (
 	"context"
+	"pkg/protos/mailer"
 	"sync"
 	"time"
-
 	"weather-subscription/internal/config"
 	"weather-subscription/internal/models"
 	"weather-subscription/internal/weather"
+	"weather-subscription/pkg/mail_service"
+
+	"go.uber.org/zap"
 )
 
 const (
 	Day                    = 24 * time.Hour
 	SendEmailDailyTimeout  = time.Minute * 15
 	SendEmailHourlyTimeout = time.Minute * 15
+	SendEmailTimeout       = time.Minute * 16
 	LoadTimeoutDuration    = time.Second * 5
+	MaxRetries             = 3
+	RetryDelay             = time.Second * 2
 )
 
 type MailerStore interface {
@@ -22,24 +28,36 @@ type MailerStore interface {
 }
 
 type Manager struct {
-	Mailer    *SMTPMailer
-	Targets   *TargetManager
-	Forecasts *Forecaster
+	MailService  *mail_service.MailService
+	Targets      *TargetManager
+	Forecasts    *Forecaster
+	Logger       logger
+	emailBuilder *EmailBuilder
 
 	stopChan chan struct{}
 	wg       sync.WaitGroup
 	running  bool
 }
 
-func New(config config.SMTPConfig, weatherAPIService *weather.WeatherAPIService) *Manager {
+type logger interface {
+	ConsoleLogInfo(msg string, fields ...zap.Field)
+	LogInfo(msg string, fields ...zap.Field)
+	ConsoleLogError(msg string, fields ...zap.Field)
+	LogError(msg string, fields ...zap.Field)
+}
+
+func New(grpcConfig config.GRPCConfig, weatherAPIService *weather.WeatherAPIService, logger logger) *Manager {
 	forecaster := NewForecaster(weatherAPIService)
-	mailer := NewSMTPMailer(config, NewEmailBuilder())
+	mailService := mail_service.NewMailService(grpcConfig, logger)
+	emailBuilder := NewEmailBuilder()
 
 	return &Manager{
-		Mailer:    mailer,
-		Targets:   &TargetManager{},
-		Forecasts: forecaster,
-		stopChan:  make(chan struct{}),
+		MailService:  mailService,
+		Targets:      &TargetManager{},
+		Forecasts:    forecaster,
+		Logger:       logger,
+		emailBuilder: emailBuilder,
+		stopChan:     make(chan struct{}),
 	}
 }
 
@@ -55,77 +73,192 @@ func (m *Manager) RemoveTarget(email string, frequency string) {
 	m.Targets.RemoveTarget(email, frequency)
 }
 
+func (m *Manager) Initialize(ctx context.Context) error {
+	return m.MailService.ConnectWithRetry(ctx, MaxRetries, RetryDelay)
+}
+
+func (m *Manager) Shutdown() error {
+	return m.MailService.Disconnect()
+}
+
 func (m *Manager) Start() {
 	m.running = true
 	m.stopChan = make(chan struct{})
 
-	// Daily
+	m.MailService.Connect(context.Background())
+
+	// Daily scheduler
 	m.wg.Add(1)
 	go func() {
 		defer m.wg.Done()
-		now := time.Now()
-		nextMidnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
-		select {
-		case <-time.After(nextMidnight.Sub(now)):
-		case <-m.stopChan:
-			return
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), SendEmailDailyTimeout)
-		targets := m.Targets.GetTargets(models.Daily)
-		forecasts := m.Forecasts.GetForecasts(ctx, targets)
-		m.Mailer.sendEmails(ctx, forecasts, "Daily Weather")
-		cancel()
-		ticker := time.NewTicker(Day)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				ctx, cancel := context.WithTimeout(context.Background(), SendEmailDailyTimeout)
-				targets := m.Targets.GetTargets(models.Daily)
-				forecasts := m.Forecasts.GetForecasts(ctx, targets)
-				m.Mailer.sendEmails(ctx, forecasts, "Daily Weather")
-				cancel()
-			case <-m.stopChan:
-				return
-			}
-		}
+		m.runScheduler("daily", models.Daily, Day, SendEmailDailyTimeout, m.getNextMidnight)
 	}()
 
-	// Hourly
+	// Hourly scheduler
 	m.wg.Add(1)
 	go func() {
 		defer m.wg.Done()
-		now := time.Now()
-		nextHour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, 0, 0, 0, now.Location())
-		select {
-		case <-time.After(nextHour.Sub(now)):
-		case <-m.stopChan:
-			return
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), SendEmailHourlyTimeout)
-		targets := m.Targets.GetTargets(models.Hourly)
-		forecasts := m.Forecasts.GetForecasts(ctx, targets)
-		m.Mailer.sendEmails(ctx, forecasts, "Hourly Weather")
-		cancel()
-		ticker := time.NewTicker(time.Hour)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				ctx, cancel := context.WithTimeout(context.Background(), SendEmailHourlyTimeout)
-				targets := m.Targets.GetTargets(models.Hourly)
-				forecasts := m.Forecasts.GetForecasts(ctx, targets)
-				m.Mailer.sendEmails(ctx, forecasts, "Hourly Weather")
-				cancel()
-			case <-m.stopChan:
-				return
-			}
-		}
+		m.runScheduler("hourly", models.Hourly, time.Hour, SendEmailHourlyTimeout, m.getNextHour)
 	}()
 }
 
+func (m *Manager) runScheduler(
+	name string,
+	frequency string,
+	interval time.Duration,
+	timeout time.Duration,
+	getNextTime func() time.Time,
+) {
+	nextTime := getNextTime()
+	select {
+	case <-time.After(time.Until(nextTime)):
+	case <-m.stopChan:
+		return
+	}
+
+	m.sendEmailBatch(name, frequency, timeout)
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			m.sendEmailBatch(name, frequency, timeout)
+		case <-m.stopChan:
+			return
+		}
+	}
+}
+
+func (m *Manager) sendEmailBatch(name string, frequency string, timeout time.Duration) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	targets := m.Targets.GetTargets(frequency)
+	if len(targets) == 0 {
+		m.Logger.LogInfo("No targets found", zap.String("frequency", string(frequency)))
+		return
+	}
+
+	forecasts := m.Forecasts.GetForecasts(ctx, targets)
+	if len(forecasts) == 0 {
+		m.Logger.LogInfo("No forecasts available", zap.String("frequency", string(frequency)))
+		return
+	}
+
+	emails := m.buildEmails(ctx, forecasts, m.getSubjectPrefix(frequency))
+
+	result, err := m.MailService.SendEmailBatch(ctx, emails)
+	if err != nil {
+		m.Logger.LogError("Failed to send email batch",
+			zap.String("frequency", string(frequency)),
+			zap.Error(err),
+		)
+		return
+	}
+
+	m.Logger.LogInfo("Email batch sent",
+		zap.String("frequency", string(frequency)),
+		zap.Uint64("success", *result.Success),
+		zap.Uint64("failed", *result.Failed),
+		zap.Int("total", len(emails)),
+	)
+}
+
+func (m *Manager) buildEmails(ctx context.Context, forecasts []models.Forecast, subjectPrefix string) []*mailer.Email {
+	emails := make([]*mailer.Email, 0, len(forecasts))
+
+	for _, f := range forecasts {
+		subj, body := m.emailBuilder.BuildWeatherForecastEmail(ctx, f.Email, f.City, f.Weather)
+		subj = subjectPrefix + subj
+
+		email := &mailer.Email{
+			ToEmail: &f.Email,
+			Subject: &subj,
+			Body:    &body,
+		}
+
+		emails = append(emails, email)
+	}
+
+	return emails
+}
+
+func (m *Manager) getSubjectPrefix(frequency string) string {
+	switch frequency {
+	case models.Daily:
+		return "Daily Weather - "
+	case models.Hourly:
+		return "Hourly Weather - "
+	default:
+		return "Weather Update - "
+	}
+}
+
+func (m *Manager) getNextMidnight() time.Time {
+	now := time.Now()
+	return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+}
+
+func (m *Manager) getNextHour() time.Time {
+	now := time.Now()
+	return time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, 0, 0, 0, now.Location())
+}
+
 func (m *Manager) Stop() {
+	if !m.running {
+		return
+	}
+
 	m.running = false
 	close(m.stopChan)
 	m.wg.Wait()
+
+	if err := m.Shutdown(); err != nil {
+		m.Logger.LogError("Failed to shutdown mail service", zap.Error(err))
+	}
+}
+
+// ne kostil'
+func (m *Manager) SendEmail(to, subject, body string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), SendEmailTimeout)
+	defer cancel()
+
+	email := &mailer.Email{
+		ToEmail: &to,
+		Subject: &subject,
+		Body:    &body,
+	}
+
+	emails := []*mailer.Email{email}
+	result, err := m.MailService.SendEmailBatch(ctx, emails)
+	if err != nil {
+		m.Logger.LogError("Failed to send email",
+			zap.String("to", to),
+			zap.String("subject", subject),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	if result.Failed != nil && *result.Failed > 0 {
+		m.Logger.LogError("Email send failed",
+			zap.String("to", to),
+			zap.String("subject", subject),
+			zap.Uint64("failed", *result.Failed),
+		)
+		return err
+	}
+
+	m.Logger.LogInfo("Email sent successfully",
+		zap.String("to", to),
+		zap.String("subject", subject),
+	)
+
+	return nil
+}
+
+func (m *Manager) IsHealthy() bool {
+	return m.MailService.IsConnected()
 }

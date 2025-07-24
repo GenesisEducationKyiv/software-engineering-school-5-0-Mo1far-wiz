@@ -49,7 +49,7 @@ func (a *Application) Initialize() {
 	weatherService := service.NewWeather(a.WeatherAPIService, a.Logger)
 	subscriptionService := service.NewSubscription(
 		a.Store.Subscription,
-		a.MailerService.Mailer,
+		a.MailerService,
 		a.MailerService.Targets,
 		a.Logger,
 	)
