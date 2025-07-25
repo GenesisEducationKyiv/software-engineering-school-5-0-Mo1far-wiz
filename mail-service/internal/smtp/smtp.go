@@ -1,6 +1,7 @@
 package smtp
 
 import (
+	"context"
 	"crypto/tls"
 	joinErr "errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"mailer/internal/models"
 	"net/smtp"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -54,7 +56,13 @@ func (m *SMTPMailer) SendEmail(email models.Email) (err error) {
 	auth := smtp.PlainAuth("", m.User, m.Password, m.Host)
 	tlsConf := &tls.Config{InsecureSkipVerify: false, ServerName: m.Host, MinVersion: tls.VersionTLS12}
 
-	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%s", m.Host, m.Port), tlsConf)
+	dialer := &tls.Dialer{
+		Config: tlsConf,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	conn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%s", m.Host, m.Port))
 	if err != nil {
 		m.logger.LogError("creating SMTP client failed", zap.Error(err))
 		return errors.Wrap(err, "connect SMTP")

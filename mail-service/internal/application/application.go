@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"log"
 	"mailer/internal/config"
 	"net"
@@ -32,13 +33,16 @@ type Application struct {
 }
 
 func (a *Application) Initialize() {
-	lis, err := net.Listen("tcp", a.Config.Addr)
+	var lc net.ListenConfig
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	lis, err := lc.Listen(ctx, "tcp", a.Config.Addr)
 	if err != nil {
 		log.Fatalf("failed to listen on %s: %v", a.Config.Addr, err)
 	}
 
 	a.listener = lis
-
 	a.server = grpc.NewServer()
 	pb.RegisterMailServiceServer(a.server, a.Mailer)
 }
