@@ -56,8 +56,8 @@ tasks:
     desc: Downs test database image.
     cmds:
       - echo "Stopping test database container..."
-      - docker compose -f docker compose.test.yaml stop testdb
-      - docker compose -f docker compose.test.yaml rm -f testdb
+      - docker compose -f docker-compose.test.yaml stop testdb
+      - docker compose -f docker-compose.test.yaml rm -f testdb
     silent: true
 
   clean:
