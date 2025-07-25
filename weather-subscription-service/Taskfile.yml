@@ -18,46 +18,46 @@ tasks:
     silent: true
 
   up:
-    desc: Runs docker-compose images.
+    desc: Runs docker compose images.
     cmds:
       - echo "Starting all services..."
-      - docker-compose up -d
+      - docker compose up -d
     silent: true
 
   down:
-    desc: Downs docker-compose images.
+    desc: Downs docker compose images.
     cmds:
       - echo "Stopping all services..."
-      - docker-compose down
+      - docker compose down
     silent: true
 
   db-up:
     desc: Runs database image.
     cmds:
       - echo "Starting database container..."
-      - docker-compose up -d postgres
+      - docker compose up -d postgres
     silent: true
 
   testdb-up:
     desc: Runs test database image.
     cmds:
       - echo "Starting test database container..."
-      - docker-compose -f docker-compose.test.yaml up -d testdb
+      - docker compose -f docker compose.test.yaml up -d testdb
     silent: true
 
   db-down:
     desc: Downs database image.
     cmds:
       - echo "Stopping database container..."
-      - docker-compose stop postgres
+      - docker compose stop postgres
     silent: true
 
   testdb-down:
     desc: Downs test database image.
     cmds:
       - echo "Stopping test database container..."
-      - docker-compose -f docker-compose.test.yaml stop testdb
-      - docker-compose -f docker-compose.test.yaml rm -f testdb
+      - docker compose -f docker compose.test.yaml stop testdb
+      - docker compose -f docker compose.test.yaml rm -f testdb
     silent: true
 
   clean:
@@ -134,12 +134,12 @@ tasks:
     desc: Runs the Redis container.
     cmds:
       - echo "Starting Redis container..."
-      - docker-compose up -d redis
+      - docker compose up -d redis
     silent: true
 
   redis-down:
     desc: Stops the Redis container.
     cmds:
       - echo "Stopping Redis container..."
-      - docker-compose stop redis
+      - docker compose stop redis
     silent: true

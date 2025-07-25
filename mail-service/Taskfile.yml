@@ -59,15 +59,15 @@ tasks:
       - docker run --rm -p 50051:50051 mail-service
 
   up:
-    desc: Runs docker-compose images.
+    desc: Runs docker compose images.
     cmds:
       - echo "Starting all services..."
-      - docker-compose up -d
+      - docker compose up -d
     silent: true
 
   down:
-    desc: Downs docker-compose images.
+    desc: Downs docker compose images.
     cmds:
       - echo "Stopping all services..."
-      - docker-compose down
+      - docker compose down
     silent: true
