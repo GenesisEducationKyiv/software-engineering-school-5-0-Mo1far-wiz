@@ -15,6 +15,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const DialConnectionTimeout = 10 * time.Second
+
 type logger interface {
 	LogInfo(msg string, fields ...zap.Field)
 	FileLogInfo(msg string, fields ...zap.Field)
@@ -59,7 +61,7 @@ func (m *SMTPMailer) SendEmail(email models.Email) (err error) {
 	dialer := &tls.Dialer{
 		Config: tlsConf,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), DialConnectionTimeout)
 	defer cancel()
 
 	conn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%s", m.Host, m.Port))

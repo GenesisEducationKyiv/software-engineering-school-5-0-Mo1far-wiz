@@ -39,7 +39,7 @@ func (a *Application) Initialize() {
 
 	lis, err := lc.Listen(ctx, "tcp", a.Config.Addr)
 	if err != nil {
-		log.Fatalf("failed to listen on %s: %v", a.Config.Addr, err)
+		log.Panicf("failed to listen on %s: %v", a.Config.Addr, err)
 	}
 
 	a.listener = lis
