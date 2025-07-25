@@ -42,7 +42,7 @@ tasks:
     desc: Runs test database image.
     cmds:
       - echo "Starting test database container..."
-      - docker compose -f docker compose.test.yaml up -d testdb
+      - docker compose -f docker-compose.test.yaml up -d testdb
     silent: true
 
   db-down:
