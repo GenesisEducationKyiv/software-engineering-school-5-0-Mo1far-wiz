@@ -39,14 +39,14 @@ tasks:
     desc: Start whole infrastructure (subscription-service, mail-service, DB, Redis, etc.)
     cmds:
       - echo "Starting all services..."
-      - docker-compose up -d
+      - docker compose up -d
     silent: true
 
   down:
     desc: Stop whole infrastructure (subscription-service, mail-service, DB, Redis, etc.)
     cmds:
       - echo "Stopping all services..."
-      - docker-compose down
+      - docker compose down
     silent: true
 
   run-mail:
