@@ -22,10 +22,10 @@ jobs:
         run: |
           sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 
-      - name: Fetch remote golangci-lint config
+      - name: Install golangci-lint
         run: |
-          curl -fsSL https://raw.githubusercontent.com/fabl3ss/genesis-se-school-linter/refs/heads/main/.golangci.yaml \
-          -o .golangci.yml
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
+            | sh -s -- -b /usr/local/bin latest
 
       - name: Run linters
         run: task lint
