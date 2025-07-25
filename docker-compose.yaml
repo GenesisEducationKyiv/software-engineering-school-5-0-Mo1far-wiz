@@ -1,4 +1,76 @@
+version: "3.9"
 services:
+  mailer:
+    build:
+      context: .
+      dockerfile: mail-service/Dockerfile
+      args:
+        SERVICE_NAME: mail-service
+    container_name: mailer-app
+    restart: unless-stopped
+    environment:
+      # App settings
+      APP_PORT:            "${MAILER_PORT}"
+      # Mailer
+      SMTP_USER:           "${SMTP_USER}"
+      SMTP_PASS:           "${SMTP_PASS}"
+      SMTP_HOST:           "${SMTP_HOST}"
+      SMTP_PORT:           "${SMTP_PORT}"
+    ports:
+        - "${MAILER_PORT}:${MAILER_PORT}"
+    networks:
+      - app-net
+
+  weather:
+    build:
+      context: .
+      dockerfile: weather-subscription-service/Dockerfile
+      args:
+        SERVICE_NAME: weather-service
+    container_name: weather-app
+    restart: unless-stopped
+    environment:
+      # App settings
+      APP_PORT:            "${WEATHER_PORT}"
+      READ_TIMEOUT:        "${READ_TIMEOUT}"
+      WRITE_TIMEOUT:       "${WRITE_TIMEOUT}"
+      IDLE_TIMEOUT:        "${IDLE_TIMEOUT}"
+      GIN_MODE:            "release"
+
+      GRPC_ADDR: "mailer:${MAILER_PORT}"
+
+      # Database connection
+      DB_HOST:             "postgres"
+      DB_PORT:             "${DB_PORT}"
+      DB_USER:             "${DB_USER}"
+      DB_PASSWORD:         "${DB_PASSWORD}"
+      DB_NAME:             "${DB_NAME}"
+      DB_SSL_MODE:         "${DB_SSL_MODE}"
+      MAX_OPEN_CONNS:      "${MAX_OPEN_CONNS}"
+      DB_MAX_IDLE_CONNS:   "${DB_MAX_IDLE_CONNS}"
+      DB_MAX_IDLE_TIME:    "${DB_MAX_IDLE_TIME}"
+
+      # Migrations
+      MIGRATION_PATH:      "${MIGRATION_PATH}"
+
+      # Weather API
+      WEATHER_API_KEY:     "${WEATHER_API_KEY}"
+      WEATHER_SERVICE_URL: "${WEATHER_SERVICE_URL}"
+
+      # Redis
+      REDIS_ADDR:          "redis:6379"
+      REDIS_DB:            "${REDIS_DB}"
+      REDIS_PASSWORD:      "${REDIS_PASSWORD}"
+    ports:
+      - "${WEATHER_PORT}:${WEATHER_PORT}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-net
+
   postgres:
     image: postgres:15-alpine
     container_name: weather-db
@@ -16,55 +88,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: weather-app
-    restart: unless-stopped
-    environment:
-      # App settings
-      APP_PORT:            "${APP_PORT}"
-      READ_TIMEOUT:        "${READ_TIMEOUT}"
-      WRITE_TIMEOUT:       "${WRITE_TIMEOUT}"
-      IDLE_TIMEOUT:        "${IDLE_TIMEOUT}"
-
-      # Database connection
-      DB_HOST:             "postgres"
-      DB_PORT:             "5432"
-      DB_USER:             "${DB_USER}"
-      DB_PASSWORD:         "${DB_PASSWORD}"
-      DB_NAME:             "${DB_NAME}"
-      DB_SSL_MODE:         "${DB_SSL_MODE}"
-      MAX_OPEN_CONNS:      "${MAX_OPEN_CONNS}"
-      DB_MAX_IDLE_CONNS:   "${DB_MAX_IDLE_CONNS}"
-      DB_MAX_IDLE_TIME:    "${DB_MAX_IDLE_TIME}"
-
-      # Migrations
-      MIGRATION_PATH:      "${MIGRATION_PATH}"
-
-      # Weather API
-      WEATHER_API_KEY:     "${WEATHER_API_KEY}"
-      WEATHER_SERVICE_URL: "${WEATHER_SERVICE_URL}"
-
-      # Mailer
-      SMTP_USER:           "${SMTP_USER}"
-      SMTP_PASS:           "${SMTP_PASS}"
-      SMTP_HOST:           "${SMTP_HOST}"
-      SMTP_PORT:           "${SMTP_PORT}"
-
-      # Redis
-      REDIS_ADDR:          "redis:6379"
-      REDIS_DB:            "${REDIS_DB}"
-      REDIS_PASSWORD:      "${REDIS_PASSWORD}"
-    ports:
-      - "${APP_PORT}:${APP_PORT}"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    networks:
+      - app-net
 
   redis:
     image: redis:7-alpine
@@ -80,6 +105,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
 
 volumes:
   postgres_data:

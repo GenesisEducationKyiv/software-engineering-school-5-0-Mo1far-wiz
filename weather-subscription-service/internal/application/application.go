@@ -68,7 +68,10 @@ func (a *Application) Run() {
 
 	a.Logger.ConsoleLogInfo("application initialized")
 
-	a.MailerService.Start()
+	err := a.MailerService.Start()
+	if err != nil {
+		log.Panic("Mailer service: %w", err)
+	}
 
 	go func() {
 		log.Printf("Starting server on %s", a.Config.Addr)
@@ -84,7 +87,7 @@ func (a *Application) Run() {
 	log.Println("Shutting down server...")
 	a.MailerService.Stop()
 
-	err := a.Logger.Sync()
+	err = a.Logger.Sync()
 	if err != nil {
 		log.Panicf("Logger sync error: %v", err)
 	}

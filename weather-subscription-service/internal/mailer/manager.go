@@ -8,8 +8,9 @@ import (
 	"weather-subscription/internal/config"
 	"weather-subscription/internal/models"
 	"weather-subscription/internal/weather"
-	"weather-subscription/pkg/mail_service"
+	"weather-subscription/pkg/mailservice"
 
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -28,7 +29,7 @@ type MailerStore interface {
 }
 
 type Manager struct {
-	MailService  *mail_service.MailService
+	MailService  *mailservice.MailService
 	Targets      *TargetManager
 	Forecasts    *Forecaster
 	Logger       logger
@@ -48,7 +49,7 @@ type logger interface {
 
 func New(grpcConfig config.GRPCConfig, weatherAPIService *weather.WeatherAPIService, logger logger) *Manager {
 	forecaster := NewForecaster(weatherAPIService)
-	mailService := mail_service.NewMailService(grpcConfig, logger)
+	mailService := mailservice.NewMailService(grpcConfig, logger)
 	emailBuilder := NewEmailBuilder()
 
 	return &Manager{
@@ -81,29 +82,33 @@ func (m *Manager) Shutdown() error {
 	return m.MailService.Disconnect()
 }
 
-func (m *Manager) Start() {
+func (m *Manager) Start() error {
 	m.running = true
 	m.stopChan = make(chan struct{})
 
-	m.MailService.Connect(context.Background())
+	err := m.MailService.Connect(context.Background())
+	if err != nil {
+		return errors.Wrap(err, "connection to mailer-service")
+	}
 
 	// Daily scheduler
 	m.wg.Add(1)
 	go func() {
 		defer m.wg.Done()
-		m.runScheduler("daily", models.Daily, Day, SendEmailDailyTimeout, m.getNextMidnight)
+		m.runScheduler(models.Daily, Day, SendEmailDailyTimeout, m.getNextMidnight)
 	}()
 
 	// Hourly scheduler
 	m.wg.Add(1)
 	go func() {
 		defer m.wg.Done()
-		m.runScheduler("hourly", models.Hourly, time.Hour, SendEmailHourlyTimeout, m.getNextHour)
+		m.runScheduler(models.Hourly, time.Hour, SendEmailHourlyTimeout, m.getNextHour)
 	}()
+
+	return nil
 }
 
 func (m *Manager) runScheduler(
-	name string,
 	frequency string,
 	interval time.Duration,
 	timeout time.Duration,
@@ -116,7 +121,7 @@ func (m *Manager) runScheduler(
 		return
 	}
 
-	m.sendEmailBatch(name, frequency, timeout)
+	m.sendEmailBatch(frequency, timeout)
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -124,26 +129,26 @@ func (m *Manager) runScheduler(
 	for {
 		select {
 		case <-ticker.C:
-			m.sendEmailBatch(name, frequency, timeout)
+			m.sendEmailBatch(frequency, timeout)
 		case <-m.stopChan:
 			return
 		}
 	}
 }
 
-func (m *Manager) sendEmailBatch(name string, frequency string, timeout time.Duration) {
+func (m *Manager) sendEmailBatch(frequency string, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	targets := m.Targets.GetTargets(frequency)
 	if len(targets) == 0 {
-		m.Logger.LogInfo("No targets found", zap.String("frequency", string(frequency)))
+		m.Logger.LogInfo("No targets found", zap.String("frequency", frequency))
 		return
 	}
 
 	forecasts := m.Forecasts.GetForecasts(ctx, targets)
 	if len(forecasts) == 0 {
-		m.Logger.LogInfo("No forecasts available", zap.String("frequency", string(frequency)))
+		m.Logger.LogInfo("No forecasts available", zap.String("frequency", frequency))
 		return
 	}
 
@@ -152,21 +157,25 @@ func (m *Manager) sendEmailBatch(name string, frequency string, timeout time.Dur
 	result, err := m.MailService.SendEmailBatch(ctx, emails)
 	if err != nil {
 		m.Logger.LogError("Failed to send email batch",
-			zap.String("frequency", string(frequency)),
+			zap.String("frequency", frequency),
 			zap.Error(err),
 		)
 		return
 	}
 
 	m.Logger.LogInfo("Email batch sent",
-		zap.String("frequency", string(frequency)),
+		zap.String("frequency", frequency),
 		zap.Uint64("success", *result.Success),
 		zap.Uint64("failed", *result.Failed),
 		zap.Int("total", len(emails)),
 	)
 }
 
-func (m *Manager) buildEmails(ctx context.Context, forecasts []models.Forecast, subjectPrefix string) []*mailer.Email {
+func (m *Manager) buildEmails(
+	ctx context.Context,
+	forecasts []models.Forecast,
+	subjectPrefix string,
+) []*mailer.Email {
 	emails := make([]*mailer.Email, 0, len(forecasts))
 
 	for _, f := range forecasts {

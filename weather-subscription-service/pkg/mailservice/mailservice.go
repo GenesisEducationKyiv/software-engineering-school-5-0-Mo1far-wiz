@@ -1,4 +1,4 @@
-package mail_service
+package mailservice
 
 import (
 	"context"
@@ -90,7 +90,7 @@ func (ms *MailService) InitStream(ctx context.Context) error {
 	defer ms.mu.Unlock()
 
 	if ms.client == nil {
-		return fmt.Errorf("not connected to mail service")
+		return errors.New("not connected to mail service")
 	}
 
 	if ms.stream != nil {
@@ -116,7 +116,7 @@ func (ms *MailService) SendEmail(email *mailer.Email) error {
 	ms.mu.RUnlock()
 
 	if stream == nil {
-		return fmt.Errorf("stream not initialized")
+		return errors.New("stream not initialized")
 	}
 
 	if err := stream.Send(email); err != nil {
@@ -151,7 +151,7 @@ func (ms *MailService) FinishAndGetResult() (*mailer.Result, error) {
 	ms.mu.Unlock()
 
 	if stream == nil {
-		return nil, fmt.Errorf("no active stream")
+		return nil, errors.New("no active stream")
 	}
 
 	result, err := stream.CloseAndRecv()
@@ -197,16 +197,18 @@ func (ms *MailService) IsStreamActive() bool {
 func (ms *MailService) ConnectWithRetry(ctx context.Context, maxRetries int, retryDelay time.Duration) error {
 	var lastErr error
 	for i := 0; i <= maxRetries; i++ {
-		if err := ms.Connect(ctx); err == nil {
+		err := ms.Connect(ctx)
+
+		if err == nil {
 			return nil
-		} else {
-			lastErr = err
-			ms.logger.LogError("Connection attempt failed",
-				zap.Int("attempt", i+1),
-				zap.Int("max_retries", maxRetries),
-				zap.Error(err),
-			)
 		}
+
+		lastErr = err
+		ms.logger.LogError("Connection attempt failed",
+			zap.Int("attempt", i+1),
+			zap.Int("max_retries", maxRetries),
+			zap.Error(err),
+		)
 
 		if i < maxRetries {
 			select {
@@ -218,5 +220,5 @@ func (ms *MailService) ConnectWithRetry(ctx context.Context, maxRetries int, ret
 		}
 	}
 
-	return fmt.Errorf("failed to connect after %d retries: %w", maxRetries, lastErr)
+	return errors.Wrap(lastErr, fmt.Sprintf("failed to connect after %d retries", maxRetries))
 }
