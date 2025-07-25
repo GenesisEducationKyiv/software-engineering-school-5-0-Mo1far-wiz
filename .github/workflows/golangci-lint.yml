@@ -1,4 +1,4 @@
-name: golangci-lint
+name: lint
 on:
   push:
     branches:
@@ -17,11 +17,15 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+
+      - name: Install Task
+        run: |
+          sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+
       - name: Fetch remote golangci-lint config
         run: |
           curl -fsSL https://raw.githubusercontent.com/fabl3ss/genesis-se-school-linter/refs/heads/main/.golangci.yaml \
           -o .golangci.yml
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        with:
-          version: latest
+
+      - name: Run linters
+        run: task lint

@@ -12,45 +12,43 @@ includes:
     dir: ./weather-subscription-service
 
 tasks:
-  # ── Mailer .proto codegen ──────────────────────────────────────────────────
   proto-mailer:
     desc: Generate Go + gRPC code from your mail‑service .proto
     cmds:
       - task: mail:proto
 
-  # ── Lint all services ─────────────────────────────────────────────────────
   lint:
     desc: Run linters for both services
     cmds:
       - task: mail:lint
       - task: weather:lint
 
-  # ── Build all binaries ────────────────────────────────────────────────────
   build:
     desc: Build both mail‑service and weather‑service
     cmds:
       - task: mail:build
       - task: weather:build
 
-  # ── Run tests ─────────────────────────────────────────────────────────────
   test:
     desc: Execute all tests (unit & integration) for both services
     cmds:
       - task: mail:test
       - task: weather:test
 
-  # ── Bring up/down infra (Docker) ─────────────────────────────────────────
   up:
-    desc: Start weather‑service infrastructure (DB, Redis, etc.)
+    desc: Start whole infrastructure (subscription-service, mail-service, DB, Redis, etc.)
     cmds:
-      - task: weather:up
+      - echo "Starting all services..."
+      - docker-compose up -d
+    silent: true
 
   down:
-    desc: Stop weather‑service infrastructure
+    desc: Stop whole infrastructure (subscription-service, mail-service, DB, Redis, etc.)
     cmds:
-      - task: weather:down
+      - echo "Stopping all services..."
+      - docker-compose down
+    silent: true
 
-  # ── Run individual services ───────────────────────────────────────────────
   run-mail:
     desc: Build & run only mail‑service
     cmds:

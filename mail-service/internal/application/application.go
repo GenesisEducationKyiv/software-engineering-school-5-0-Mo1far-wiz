@@ -17,10 +17,6 @@ import (
 
 const shutdownTimeout = 5 * time.Second
 
-type mailer interface {
-	SendEmail(stream pb.MailService_SendEmailServer) error
-}
-
 type Logger interface {
 	ConsoleLogInfo(msg string, fields ...zap.Field)
 	ConsoleLogError(msg string, fields ...zap.Field)

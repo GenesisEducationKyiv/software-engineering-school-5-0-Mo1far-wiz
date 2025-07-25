@@ -7,6 +7,8 @@ import (
 	"weather-subscription/internal/models"
 	"weather-subscription/internal/svc"
 
+	joinErr "errors"
+
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -42,7 +44,7 @@ func (rs *WeatherAPIService) GetCityWeather(ctx context.Context, city string) (m
 
 	weather, err := rs.head.GetCityWeather(ctx, city)
 	if err != nil {
-		return models.Weather{}, err
+		return models.Weather{}, joinErr.Join(svc.ErrorGetCityWeather, err)
 	}
 
 	weatherRaw, err := json.Marshal(weather)
