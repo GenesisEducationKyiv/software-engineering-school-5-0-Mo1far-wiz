@@ -37,6 +37,4 @@ RUN chown -R appuser:appuser /home/appuser
 
 USER appuser
 
-# EXPOSE 8081
-
 ENTRYPOINT ["mail-service"]

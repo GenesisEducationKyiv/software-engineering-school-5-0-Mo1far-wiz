@@ -42,6 +42,4 @@ RUN chown -R appuser:appuser /home/appuser
 
 USER appuser
 
-# EXPOSE 8080
-
 ENTRYPOINT ["weather-service"]
