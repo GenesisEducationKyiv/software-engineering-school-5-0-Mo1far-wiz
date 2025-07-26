@@ -74,10 +74,6 @@ func (m *Manager) RemoveTarget(email string, frequency string) {
 	m.Targets.RemoveTarget(email, frequency)
 }
 
-func (m *Manager) Initialize(ctx context.Context) error {
-	return m.MailService.ConnectWithRetry(ctx, MaxRetries, RetryDelay)
-}
-
 func (m *Manager) Shutdown() error {
 	return m.MailService.Disconnect()
 }
@@ -229,33 +225,18 @@ func (m *Manager) Stop() {
 	}
 }
 
-// ne kostil'
 func (m *Manager) SendEmail(to, subject, body string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), SendEmailTimeout)
-	defer cancel()
-
 	email := &mailer.Email{
 		ToEmail: &to,
 		Subject: &subject,
 		Body:    &body,
 	}
 
-	emails := []*mailer.Email{email}
-	result, err := m.MailService.SendEmailBatch(ctx, emails)
-	if err != nil {
+	if err := m.MailService.SendEmail(email); err != nil {
 		m.Logger.LogError("Failed to send email",
 			zap.String("to", to),
 			zap.String("subject", subject),
 			zap.Error(err),
-		)
-		return err
-	}
-
-	if result.Failed != nil && *result.Failed > 0 {
-		m.Logger.LogError("Email send failed",
-			zap.String("to", to),
-			zap.String("subject", subject),
-			zap.Uint64("failed", *result.Failed),
 		)
 		return err
 	}
