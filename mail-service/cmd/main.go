@@ -14,7 +14,7 @@ import (
 const logFile = "mailer.log"
 
 func getApplicationConfig() config.ApplicationConfig {
-	appPort := env.GetInt("APP_PORT", 8081)
+	appPort := env.GetInt("MAILER_PORT", 8081)
 	return config.ApplicationConfig{
 		Addr: fmt.Sprintf(":%d", appPort),
 	}

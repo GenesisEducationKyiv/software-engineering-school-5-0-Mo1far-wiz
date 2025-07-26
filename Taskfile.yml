@@ -19,7 +19,7 @@ tasks:
       - task: weather:lint
 
   build:
-    desc: Build both mail‑service and weather‑service
+    desc: Build both mail-service and weather-service
     cmds:
       - task: mail:build
       - task: weather:build
@@ -33,24 +33,26 @@ tasks:
   up:
     desc: Start whole infrastructure (subscription-service, mail-service, DB, Redis, etc.)
     cmds:
-      - echo "Starting all services..."
-      - docker compose up -d
+      - docker network create app-net || true
+      - task: mail:up
+      - task: weather:up
     silent: true
 
   down:
     desc: Stop whole infrastructure (subscription-service, mail-service, DB, Redis, etc.)
     cmds:
-      - echo "Stopping all services..."
-      - docker compose down
+      - task: mail:down
+      - task: weather:down
+      - docker network rm app-net || true
     silent: true
 
   run-mail:
-    desc: Build & run only mail‑service
+    desc: Build & run only mail-service
     cmds:
       - task: mail:run
 
   run-weather:
-    desc: Build & run only weather‑service
+    desc: Build & run only weather-service
     cmds:
       - task: weather:run
 
