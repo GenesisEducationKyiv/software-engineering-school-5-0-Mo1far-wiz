@@ -67,7 +67,10 @@ func (s *Mailer) SendEmail(stream pb.MailService_SendEmailServer) error {
 
 		if err := s.smtp.SendEmail(email); err != nil {
 			fail++
-			s.logger.LogError("smtp failed", zap.Error(err))
+			s.logger.LogError(
+				"smtp failed", zap.Error(err),
+				zap.String("for email", email.ToEmail),
+			)
 		} else {
 			success++
 		}
