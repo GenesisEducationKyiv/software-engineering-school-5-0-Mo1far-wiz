@@ -36,6 +36,6 @@ type RedisConfig struct {
 	DB       int
 }
 
-type GRPCConfig struct {
+type MailServiceConfig struct {
 	Addr string
 }

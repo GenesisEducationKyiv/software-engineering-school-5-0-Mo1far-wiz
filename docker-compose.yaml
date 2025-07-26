@@ -37,7 +37,7 @@ services:
       IDLE_TIMEOUT:        "${IDLE_TIMEOUT}"
       GIN_MODE:            "release"
 
-      GRPC_ADDR: "mailer:${MAILER_PORT}"
+      MAILER_ADDR: "mailer:${MAILER_PORT}"
 
       # Database connection
       DB_HOST:             "postgres"

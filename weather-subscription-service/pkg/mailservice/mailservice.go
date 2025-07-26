@@ -22,7 +22,7 @@ type logger interface {
 }
 
 type MailService struct {
-	config config.GRPCConfig
+	config config.MailService
 	logger logger
 
 	conn   *grpc.ClientConn
@@ -31,7 +31,7 @@ type MailService struct {
 	mu     sync.RWMutex
 }
 
-func NewMailService(cfg config.GRPCConfig, logger logger) *MailService {
+func NewMailService(cfg config.MailService, logger logger) *MailService {
 	return &MailService{
 		config: cfg,
 		logger: logger,

@@ -82,11 +82,11 @@ func getVisualCrossingAPIConfig() config.WeatherAPIConfig {
 	}
 }
 
-func getGRPCConfig() config.GRPCConfig {
-	grpcAddr := env.GetString("GRPC_ADDR", "addr")
+func getMailServiceConfig() config.MailServiceConfig {
+	mailerAddr := env.GetString("MAILER_ADDR", "addr")
 
-	return config.GRPCConfig{
-		Addr: grpcAddr,
+	return config.MailServiceConfig{
+		Addr: mailerAddr,
 	}
 }
 
@@ -183,8 +183,8 @@ func main() {
 		log.Panic(err)
 	}
 
-	grpcConfig := getGRPCConfig()
-	mailerService := mailer.New(grpcConfig, weatherAPIService, logger)
+	mailServiceConfig := getMailServiceConfig()
+	mailerService := mailer.New(mailServiceConfig, weatherAPIService, logger)
 
 	ctx, cancel := context.WithTimeout(context.Background(), mailer.LoadTimeoutDuration)
 	err = mailerService.LoadTargets(ctx, store.Mailer)
