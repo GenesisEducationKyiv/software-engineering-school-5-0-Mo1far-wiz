@@ -12,11 +12,6 @@ includes:
     dir: ./weather-subscription-service
 
 tasks:
-  proto-mailer:
-    desc: Generate Go + gRPC code from your mail‑service .proto
-    cmds:
-      - task: mail:proto
-
   lint:
     desc: Run linters for both services
     cmds:
