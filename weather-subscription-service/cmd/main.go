@@ -83,7 +83,7 @@ func getVisualCrossingAPIConfig() config.WeatherAPIConfig {
 }
 
 func getMailServiceConfig() config.MailServiceConfig {
-	mailerAddr := env.GetString("MAILER_ADDR", "addr")
+	mailerAddr := env.GetString("MAILER_ADDR", "wrong-addr")
 
 	return config.MailServiceConfig{
 		Addr: mailerAddr,

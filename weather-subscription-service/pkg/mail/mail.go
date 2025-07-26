@@ -1,4 +1,4 @@
-package mailservice
+package mail
 
 import (
 	"context"
@@ -22,7 +22,7 @@ type logger interface {
 }
 
 type MailService struct {
-	config config.MailService
+	config config.MailServiceConfig
 	logger logger
 
 	conn   *grpc.ClientConn
@@ -31,7 +31,7 @@ type MailService struct {
 	mu     sync.RWMutex
 }
 
-func NewMailService(cfg config.MailService, logger logger) *MailService {
+func NewMailService(cfg config.MailServiceConfig, logger logger) *MailService {
 	return &MailService{
 		config: cfg,
 		logger: logger,
@@ -110,7 +110,7 @@ func (ms *MailService) InitStream(ctx context.Context) error {
 	return nil
 }
 
-func (ms *MailService) SendEmail(email *mailer.Email) error {
+func (ms *MailService) sendEmail(email *mailer.Email) error {
 	ms.mu.RLock()
 	stream := ms.stream
 	ms.mu.RUnlock()
@@ -135,9 +135,9 @@ func (ms *MailService) SendEmail(email *mailer.Email) error {
 	return nil
 }
 
-func (ms *MailService) SendEmails(emails []*mailer.Email) error {
+func (ms *MailService) sendEmails(emails []*mailer.Email) error {
 	for _, email := range emails {
-		if err := ms.SendEmail(email); err != nil {
+		if err := ms.sendEmail(email); err != nil {
 			return err
 		}
 	}
@@ -175,7 +175,19 @@ func (ms *MailService) SendEmailBatch(ctx context.Context, emails []*mailer.Emai
 		return nil, err
 	}
 
-	if err := ms.SendEmails(emails); err != nil {
+	if err := ms.sendEmails(emails); err != nil {
+		return nil, err
+	}
+
+	return ms.FinishAndGetResult()
+}
+
+func (ms *MailService) SendEmail(ctx context.Context, email *mailer.Email) (*mailer.Result, error) {
+	if err := ms.InitStream(ctx); err != nil {
+		return nil, err
+	}
+
+	if err := ms.sendEmail(email); err != nil {
 		return nil, err
 	}
 

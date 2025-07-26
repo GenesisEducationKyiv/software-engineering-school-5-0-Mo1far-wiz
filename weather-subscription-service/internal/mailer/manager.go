@@ -8,7 +8,7 @@ import (
 	"weather-subscription/internal/config"
 	"weather-subscription/internal/models"
 	"weather-subscription/internal/weather"
-	"weather-subscription/pkg/mailservice"
+	"weather-subscription/pkg/mail"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -29,7 +29,7 @@ type MailerStore interface {
 }
 
 type Manager struct {
-	MailService  *mailservice.MailService
+	MailService  *mail.MailService
 	Targets      *TargetManager
 	Forecasts    *Forecaster
 	Logger       logger
@@ -49,7 +49,7 @@ type logger interface {
 
 func New(mailServiceConfig config.MailServiceConfig, weatherAPIService *weather.WeatherAPIService, logger logger) *Manager {
 	forecaster := NewForecaster(weatherAPIService)
-	mailService := mailservice.NewMailService(mailServiceConfig, logger)
+	mailService := mail.NewMailService(mailServiceConfig, logger)
 	emailBuilder := NewEmailBuilder()
 
 	return &Manager{
@@ -232,19 +232,15 @@ func (m *Manager) SendEmail(to, subject, body string) error {
 		Body:    &body,
 	}
 
-	if err := m.MailService.SendEmail(email); err != nil {
+	result, err := m.MailService.SendEmail(context.Background(), email)
+
+	if err != nil || *result.Failed == 1 {
 		m.Logger.LogError("Failed to send email",
 			zap.String("to", to),
 			zap.String("subject", subject),
 			zap.Error(err),
 		)
-		return err
+		return errors.Wrap(err, "failed to send email")
 	}
-
-	m.Logger.LogInfo("Email sent successfully",
-		zap.String("to", to),
-		zap.String("subject", subject),
-	)
-
 	return nil
 }
