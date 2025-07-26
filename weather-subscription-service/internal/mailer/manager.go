@@ -47,7 +47,11 @@ type logger interface {
 	LogError(msg string, fields ...zap.Field)
 }
 
-func New(mailServiceConfig config.MailServiceConfig, weatherAPIService *weather.WeatherAPIService, logger logger) *Manager {
+func New(
+	mailServiceConfig config.MailServiceConfig,
+	weatherAPIService *weather.WeatherAPIService,
+	logger logger,
+) *Manager {
 	forecaster := NewForecaster(weatherAPIService)
 	mailService := mail.NewMailService(mailServiceConfig, logger)
 	emailBuilder := NewEmailBuilder()
