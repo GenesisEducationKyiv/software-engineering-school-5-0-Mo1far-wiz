@@ -188,12 +188,6 @@ func (ms *MailService) IsConnected() bool {
 	return ms.conn != nil
 }
 
-func (ms *MailService) IsStreamActive() bool {
-	ms.mu.RLock()
-	defer ms.mu.RUnlock()
-	return ms.stream != nil
-}
-
 func (ms *MailService) ConnectWithRetry(ctx context.Context, maxRetries int, retryDelay time.Duration) error {
 	var lastErr error
 	for i := 0; i <= maxRetries; i++ {

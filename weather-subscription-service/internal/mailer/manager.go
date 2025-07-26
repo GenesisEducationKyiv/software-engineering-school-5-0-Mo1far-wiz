@@ -47,9 +47,9 @@ type logger interface {
 	LogError(msg string, fields ...zap.Field)
 }
 
-func New(grpcConfig config.GRPCConfig, weatherAPIService *weather.WeatherAPIService, logger logger) *Manager {
+func New(mailServiceConfig config.MailServiceConfig, weatherAPIService *weather.WeatherAPIService, logger logger) *Manager {
 	forecaster := NewForecaster(weatherAPIService)
-	mailService := mailservice.NewMailService(grpcConfig, logger)
+	mailService := mailservice.NewMailService(mailServiceConfig, logger)
 	emailBuilder := NewEmailBuilder()
 
 	return &Manager{
@@ -266,8 +266,4 @@ func (m *Manager) SendEmail(to, subject, body string) error {
 	)
 
 	return nil
-}
-
-func (m *Manager) IsHealthy() bool {
-	return m.MailService.IsConnected()
 }
