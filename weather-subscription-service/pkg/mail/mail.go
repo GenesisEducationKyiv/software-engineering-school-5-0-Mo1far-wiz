@@ -2,10 +2,8 @@ package mail
 
 import (
 	"context"
-	"fmt"
 	"pkg/protos/mailer"
 	"sync"
-	"time"
 	"weather-subscription/internal/config"
 
 	"github.com/pkg/errors"
@@ -192,39 +190,4 @@ func (ms *MailService) SendEmail(ctx context.Context, email *mailer.Email) (*mai
 	}
 
 	return ms.FinishAndGetResult()
-}
-
-func (ms *MailService) IsConnected() bool {
-	ms.mu.RLock()
-	defer ms.mu.RUnlock()
-	return ms.conn != nil
-}
-
-func (ms *MailService) ConnectWithRetry(ctx context.Context, maxRetries int, retryDelay time.Duration) error {
-	var lastErr error
-	for i := 0; i <= maxRetries; i++ {
-		err := ms.Connect(ctx)
-
-		if err == nil {
-			return nil
-		}
-
-		lastErr = err
-		ms.logger.LogError("Connection attempt failed",
-			zap.Int("attempt", i+1),
-			zap.Int("max_retries", maxRetries),
-			zap.Error(err),
-		)
-
-		if i < maxRetries {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(retryDelay):
-				// Continue to next retry
-			}
-		}
-	}
-
-	return errors.Wrap(lastErr, fmt.Sprintf("failed to connect after %d retries", maxRetries))
 }
