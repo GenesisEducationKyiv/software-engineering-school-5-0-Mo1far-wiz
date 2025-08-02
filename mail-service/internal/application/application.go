@@ -2,18 +2,14 @@ package application
 
 import (
 	"context"
-	"log"
 	"mailer/internal/config"
-	"net"
+	"mailer/internal/consumer"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-
-	pb "pkg/protos/mailer"
 )
 
 const shutdownTimeout = 5 * time.Second
@@ -26,60 +22,32 @@ type Logger interface {
 
 type Application struct {
 	Config   config.ApplicationConfig
-	server   *grpc.Server
-	listener net.Listener
 	Logger   Logger
-	Mailer   pb.MailServiceServer
-}
-
-func (a *Application) Initialize() {
-	var lc net.ListenConfig
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	lis, err := lc.Listen(ctx, "tcp", a.Config.Addr)
-	if err != nil {
-		log.Panicf("failed to listen on %s: %v", a.Config.Addr, err)
-	}
-
-	a.listener = lis
-	a.server = grpc.NewServer()
-	pb.RegisterMailServiceServer(a.server, a.Mailer)
+	Consumer *consumer.RabbitConsumer
 }
 
 func (a *Application) Run() {
-	a.Initialize()
 	a.Logger.ConsoleLogInfo("application initialized")
 
-	go func() {
-		a.Logger.ConsoleLogInfo("gRPC server listening on", zap.String("addr", a.Config.Addr))
-		if err := a.server.Serve(a.listener); err != nil {
-			log.Fatalf("gRPC serve error: %v", err)
-		}
-	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := a.Consumer.Start(ctx); err != nil {
+		a.Logger.ConsoleLogError("Failed to start consumer", zap.Error(err))
+		return
+	}
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	a.Logger.ConsoleLogInfo("Shutting down gRPC server...")
+
+	a.Logger.ConsoleLogInfo("Shutdown signal received, stopping consumer...")
+
+	a.Consumer.Stop()
 
 	if err := a.Logger.Sync(); err != nil {
-		log.Panicf("Logger sync error: %v", err)
+		a.Logger.ConsoleLogError("Logger sync error", zap.Error(err))
 	}
 
-	done := make(chan struct{})
-	go func() {
-		a.server.GracefulStop()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		a.Logger.ConsoleLogInfo("gRPC server stopped cleanly")
-	case <-time.After(shutdownTimeout):
-		a.Logger.ConsoleLogError("Timeout reached; forcing gRPC stop")
-		a.server.Stop()
-	}
-
-	a.Logger.ConsoleLogInfo("Server exited properly")
+	a.Logger.ConsoleLogInfo("Application exited properly")
 }
