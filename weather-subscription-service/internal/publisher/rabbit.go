@@ -3,6 +3,7 @@ package publisher
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 	"weather-subscription/internal/config"
@@ -11,6 +12,8 @@ import (
 	"github.com/wagslane/go-rabbitmq"
 	"go.uber.org/zap"
 )
+
+const DefaultMessagePriority = 5
 
 type Logger interface {
 	LogInfo(msg string, fields ...zap.Field)
@@ -42,8 +45,8 @@ func New(cfg config.PublishConfig, logger Logger) (*EmailPublisher, error) {
 		rabbitmq.WithPublisherOptionsExchangeDeclare,
 	)
 	if err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("failed to create RabbitMQ publisher: %w", err)
+		closeErr := conn.Close()
+		return nil, errors.Join(err, closeErr)
 	}
 
 	// Log the configuration
@@ -83,7 +86,7 @@ func (p *EmailPublisher) SendEmail(ctx context.Context, email models.Email) erro
 		rabbitmq.WithPublishOptionsHeaders(headers),
 		rabbitmq.WithPublishOptionsMessageID(messageID),
 		rabbitmq.WithPublishOptionsPersistentDelivery,
-		rabbitmq.WithPublishOptionsPriority(5),
+		rabbitmq.WithPublishOptionsPriority(DefaultMessagePriority),
 		rabbitmq.WithPublishOptionsExchange(p.exchangeName),
 	}
 
@@ -127,7 +130,7 @@ func (p *EmailPublisher) SendEmail(ctx context.Context, email models.Email) erro
 
 func (p *EmailPublisher) BatchSendEmails(ctx context.Context, emails []models.Email) error {
 	if len(emails) == 0 {
-		return fmt.Errorf("no emails provided for batch sending")
+		return errors.New("no emails provided for batch sending")
 	}
 
 	successCount := 0

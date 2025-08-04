@@ -7,12 +7,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"go.uber.org/zap"
 )
-
-const shutdownTimeout = 5 * time.Second
 
 type Logger interface {
 	ConsoleLogInfo(msg string, fields ...zap.Field)

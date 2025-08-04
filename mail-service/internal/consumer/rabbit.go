@@ -47,8 +47,8 @@ func New(cfg config.RabbitConfig, smtp smtpMailer, logger logger) *RabbitConsume
 	)
 
 	if err != nil {
-		conn.Close()
-		log.Fatalf("Failed to create RabbitMQ consumer: %v", err)
+		closeErr := conn.Close()
+		log.Fatalf("Failed to create RabbitMQ consumer: %v", errors.Join(err, closeErr))
 	}
 
 	return &RabbitConsumer{
@@ -70,9 +70,9 @@ func (r *RabbitConsumer) Start(ctx context.Context) error {
 		defer func() { r.running = false }()
 
 		err := r.consumer.Run(func(d rabbitmq.Delivery) rabbitmq.Action {
-			if err := r.processMessage(ctx, d); err != nil {
+			if err := r.processMessage(d); err != nil {
 				r.logger.ConsoleLogError("Failed to process message", zap.Error(err))
-				return r.handleError(err, d)
+				return r.handleError(err)
 			}
 
 			r.logger.ConsoleLogInfo("Message processed successfully", zap.String("messageID", d.MessageId))
@@ -90,8 +90,13 @@ func (r *RabbitConsumer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (r *RabbitConsumer) processMessage(ctx context.Context, d rabbitmq.Delivery) error {
-	r.logger.ConsoleLogInfo("Received message", zap.String("messageID", d.MessageId), zap.String("routingKey", d.RoutingKey), zap.String("body", string(d.Body)))
+func (r *RabbitConsumer) processMessage(d rabbitmq.Delivery) error {
+	r.logger.ConsoleLogInfo(
+		"Received message",
+		zap.String("messageID", d.MessageId),
+		zap.String("routingKey", d.RoutingKey),
+		zap.String("body", string(d.Body)),
+	)
 
 	var email models.Email
 	if err := json.Unmarshal(d.Body, &email); err != nil {
@@ -102,7 +107,7 @@ func (r *RabbitConsumer) processMessage(ctx context.Context, d rabbitmq.Delivery
 	return r.smtp.SendEmail(email)
 }
 
-func (r *RabbitConsumer) handleError(err error, d rabbitmq.Delivery) rabbitmq.Action {
+func (r *RabbitConsumer) handleError(err error) rabbitmq.Action {
 	switch err.(type) {
 	case *ValidationError:
 		r.logger.ConsoleLogError("Validation error, discarding message", zap.Error(err))

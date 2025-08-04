@@ -2,8 +2,8 @@
 
 version: '3'
 
-dotenv:
-  - .env
+# dotenv:
+#   - .env
 
 vars:
   BINARY_NAME: 'weather-service'
