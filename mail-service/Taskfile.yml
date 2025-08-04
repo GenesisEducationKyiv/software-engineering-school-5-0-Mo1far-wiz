@@ -2,8 +2,8 @@ version: "3"
 
 # default: [build]
 
-# dotenv:
-#   - .env
+dotenv:
+  - .env
 
 vars:
   PROTO_DIR: ../protos

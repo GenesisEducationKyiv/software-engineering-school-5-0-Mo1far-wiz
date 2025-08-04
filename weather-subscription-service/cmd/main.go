@@ -82,11 +82,15 @@ func getVisualCrossingAPIConfig() config.WeatherAPIConfig {
 	}
 }
 
-func getMailServiceConfig() config.MailServiceConfig {
-	mailerAddr := env.GetString("MAILER_ADDR", "wrong-addr")
+func getPublisherConfig() config.PublishConfig {
+	addr := env.GetString("RABBIT_ADDR", "addr")
+	routingKey := env.GetString("ROUTING_KEY", "key")
+	exchangeName := env.GetString("EXCHANGE_NAME", "labubu")
 
-	return config.MailServiceConfig{
-		Addr: mailerAddr,
+	return config.PublishConfig{
+		Addr:         addr,
+		RoutingKey:   routingKey,
+		ExchangeName: exchangeName,
 	}
 }
 
@@ -183,8 +187,8 @@ func main() {
 		log.Panic(err)
 	}
 
-	mailServiceConfig := getMailServiceConfig()
-	mailerService := mailer.New(mailServiceConfig, weatherAPIService, logger)
+	publisherConfig := getPublisherConfig()
+	mailerService := mailer.New(publisherConfig, weatherAPIService, logger)
 
 	ctx, cancel := context.WithTimeout(context.Background(), mailer.LoadTimeoutDuration)
 	err = mailerService.LoadTargets(ctx, store.Mailer)
