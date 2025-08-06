@@ -49,13 +49,6 @@ func New(cfg config.PublishConfig, logger Logger) (*EmailPublisher, error) {
 		return nil, errors.Join(err, closeErr)
 	}
 
-	// Log the configuration
-	logger.LogInfo("Publisher created successfully",
-		zap.String("exchangeName", cfg.ExchangeName),
-		zap.String("exchangeKind", "topic"),
-		zap.String("routingKey", cfg.RoutingKey),
-	)
-
 	return &EmailPublisher{
 		publisher:    publisher,
 		logger:       logger,

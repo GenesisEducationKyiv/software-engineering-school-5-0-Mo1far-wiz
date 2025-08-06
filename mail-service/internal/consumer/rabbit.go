@@ -112,9 +112,6 @@ func (r *RabbitConsumer) handleError(err error) rabbitmq.Action {
 	case *ValidationError:
 		r.logger.ConsoleLogError("Validation error, discarding message", zap.Error(err))
 		return rabbitmq.NackDiscard
-	case *TemporaryError:
-		r.logger.ConsoleLogError("Temporary error, requeuing message", zap.Error(err))
-		return rabbitmq.NackRequeue
 	default:
 		r.logger.ConsoleLogError("Unknown error, discarding message", zap.Error(err))
 		return rabbitmq.NackDiscard
