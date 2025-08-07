@@ -39,6 +39,12 @@ services:
       REDIS_ADDR:          "redis:6379"
       REDIS_DB:            "${REDIS_DB}"
       REDIS_PASSWORD:      "${REDIS_PASSWORD}"
+
+      # Rabbit
+      RABBIT_ADDR: "amqp://admin:password@rabbit:5672/"
+      ROUTING_KEY: "email.send"
+      EXCHANGE_NAME: "mail_exchange"
+
     ports:
       - "${WEATHER_PORT}:${WEATHER_PORT}"
     depends_on:
