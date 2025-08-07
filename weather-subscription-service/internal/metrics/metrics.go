@@ -97,8 +97,9 @@ func Init() {
 
 	// Start the metrics server
 	server := &http.Server{
-		Addr:    ":9090",
-		Handler: mux,
+		Addr:              ":9090",
+		Handler:           mux,
+		ReadHeaderTimeout: time.Second,
 	}
 
 	go func() {
