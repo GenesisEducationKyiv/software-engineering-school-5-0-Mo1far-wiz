@@ -48,14 +48,14 @@ func NewSubscription(
 func (s *Subscription) Subscribe(ctx context.Context, subscription models.Subscription) error {
 	err := s.store.Create(ctx, &subscription)
 	if err != nil {
-		s.logger.ConsoleLogError("can't create subscription",
+		s.logger.Error("can't create subscription",
 			zap.String("error", err.Error()))
 		return errors.Join(svc.ErrorSubscriptionCreate, err)
 	}
 
 	err = s.emailSender.SendEmail(subscription.Email, "Your token", subscription.Token)
 	if err != nil {
-		s.logger.ConsoleLogError("failed to send confirmation email",
+		s.logger.Error("failed to send confirmation email",
 			zap.String("error", err.Error()))
 		return errors.Join(svc.ErrorSendEmail, err)
 	}
@@ -65,7 +65,7 @@ func (s *Subscription) Subscribe(ctx context.Context, subscription models.Subscr
 func (s *Subscription) Confirm(ctx context.Context, token string) error {
 	sub, err := s.store.Confirm(ctx, token)
 	if err != nil {
-		s.logger.ConsoleLogError("can't confirm subscription",
+		s.logger.Error("can't confirm subscription",
 			zap.String("error", err.Error()))
 		return errors.Join(svc.ErrorSubscriptionConfirm, err)
 	}
@@ -78,7 +78,7 @@ func (s *Subscription) Confirm(ctx context.Context, token string) error {
 func (s *Subscription) Unsubscribe(ctx context.Context, token string) error {
 	sub, err := s.store.Unsubscribe(ctx, token)
 	if err != nil {
-		s.logger.ConsoleLogError("can't cancel subscription",
+		s.logger.Error("can't cancel subscription",
 			zap.String("error", err.Error()))
 		return errors.Join(svc.ErrorSubscriptionUnsubscribe, err)
 	}

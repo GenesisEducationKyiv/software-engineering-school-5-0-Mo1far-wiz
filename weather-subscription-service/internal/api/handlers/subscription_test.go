@@ -84,10 +84,10 @@ func (n *noopTargetMgr) GetTargets(_ string) []models.Subscription { return nil 
 
 type noopLogger struct{}
 
-func (n *noopLogger) ConsoleLogInfo(msg string, fields ...zap.Field)  {}
-func (n *noopLogger) ConsoleLogError(msg string, fields ...zap.Field) {}
-func (n *noopLogger) LogError(msg string, fields ...zap.Field)        {}
-func (n *noopLogger) LogInfo(msg string, fields ...zap.Field)         {}
+func (n *noopLogger) Info(msg string, fields ...zap.Field)  {}
+func (n *noopLogger) Error(msg string, fields ...zap.Field) {}
+func (n *noopLogger) Debug(msg string, fields ...zap.Field) {}
+func (n *noopLogger) Warn(msg string, fields ...zap.Field)  {}
 
 func TestCreateAndConfirm(t *testing.T) {
 	db := setupTestDB(t)

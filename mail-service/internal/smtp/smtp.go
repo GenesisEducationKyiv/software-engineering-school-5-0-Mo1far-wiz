@@ -18,9 +18,10 @@ import (
 const DialConnectionTimeout = 10 * time.Second
 
 type logger interface {
-	LogInfo(msg string, fields ...zap.Field)
-	FileLogInfo(msg string, fields ...zap.Field)
-	LogError(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Debug(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
 }
 
 type SMTPMailer struct {
@@ -42,7 +43,7 @@ func NewSMTPMailer(config config.SMTPConfig, logger logger) *SMTPMailer {
 }
 
 func (m *SMTPMailer) SendEmail(email models.Email) (err error) {
-	m.logger.FileLogInfo("sending email",
+	m.logger.Info("sending email",
 		zap.String("to", email.ToEmail),
 		zap.String("subject", email.Subject),
 		zap.String("body", email.Body),
@@ -66,7 +67,7 @@ func (m *SMTPMailer) SendEmail(email models.Email) (err error) {
 
 	conn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%s", m.Host, m.Port))
 	if err != nil {
-		m.logger.LogError("creating SMTP client failed", zap.Error(err))
+		m.logger.Error("creating SMTP client failed", zap.Error(err))
 		return errors.Wrap(err, "connect SMTP")
 	}
 
@@ -92,28 +93,28 @@ func (m *SMTPMailer) SendEmail(email models.Email) (err error) {
 	}()
 
 	if err := client.Auth(auth); err != nil {
-		m.logger.LogError("SMTP auth failed", zap.Error(err))
+		m.logger.Error("SMTP auth failed", zap.Error(err))
 		return errors.Wrap(err, "SMTP auth")
 	}
 	if err := client.Mail(m.User); err != nil {
-		m.logger.LogError("setting MAIL FROM failed", zap.Error(err))
+		m.logger.Error("setting MAIL FROM failed", zap.Error(err))
 		return errors.Wrap(err, "set sender")
 	}
 	if err := client.Rcpt(email.ToEmail); err != nil {
-		m.logger.LogError("setting RCPT TO failed", zap.Error(err))
+		m.logger.Error("setting RCPT TO failed", zap.Error(err))
 		return errors.Wrap(err, "set recipient")
 	}
 
 	wc, err := client.Data()
 	if err != nil {
-		m.logger.LogError("getting DATA writer failed", zap.Error(err))
+		m.logger.Error("getting DATA writer failed", zap.Error(err))
 		return errors.Wrap(err, "get data writer")
 	}
 
 	defer func() {
 		closeErr := wc.Close()
 		if closeErr != nil {
-			m.logger.LogError("closing DATA writer failed", zap.Error(closeErr))
+			m.logger.Error("closing DATA writer failed", zap.Error(closeErr))
 			closeErr = errors.Wrap(closeErr, "failed to close write closer")
 			if err != nil {
 				err = joinErr.Join(err, closeErr)
@@ -124,11 +125,11 @@ func (m *SMTPMailer) SendEmail(email models.Email) (err error) {
 	}()
 
 	if _, err := wc.Write([]byte(msg.String())); err != nil {
-		m.logger.LogError("writing email body failed", zap.Error(err))
+		m.logger.Error("writing email body failed", zap.Error(err))
 		return errors.Wrap(err, "write email body")
 	}
 
-	m.logger.LogInfo("Email sent successfully",
+	m.logger.Info("Email sent successfully",
 		zap.String("to", email.ToEmail),
 	)
 	return nil

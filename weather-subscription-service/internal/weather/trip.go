@@ -24,7 +24,7 @@ func (w *WeatherLoggingRoundTripper) RoundTrip(req *http.Request) (*http.Respons
 	if req.Body != nil {
 		buf, err := io.ReadAll(req.Body)
 		if err != nil {
-			w.Logger.LogError(fmt.Sprintf("%s – error reading request body: %v", w.APIName, err))
+			w.Logger.Error(fmt.Sprintf("%s – error reading request body: %v", w.APIName, err))
 		}
 		reqBody = buf
 		req.Body = io.NopCloser(bytes.NewBuffer(buf))
@@ -32,7 +32,7 @@ func (w *WeatherLoggingRoundTripper) RoundTrip(req *http.Request) (*http.Respons
 
 	resp, err := base.RoundTrip(req)
 	if err != nil {
-		w.Logger.LogError(fmt.Sprintf(
+		w.Logger.Error(fmt.Sprintf(
 			"%s – request to %s failed: %v | request_body=%q",
 			w.APIName, req.URL.String(), err, string(reqBody),
 		))
@@ -41,7 +41,7 @@ func (w *WeatherLoggingRoundTripper) RoundTrip(req *http.Request) (*http.Respons
 
 	respBody, readErr := io.ReadAll(resp.Body)
 	if cerr := resp.Body.Close(); cerr != nil {
-		w.Logger.LogError(fmt.Sprintf(
+		w.Logger.Error(fmt.Sprintf(
 			"%s – error closing response body: %v",
 			w.APIName, cerr,
 		))
@@ -50,7 +50,7 @@ func (w *WeatherLoggingRoundTripper) RoundTrip(req *http.Request) (*http.Respons
 	resp.Body = io.NopCloser(bytes.NewBuffer(respBody))
 
 	if readErr != nil {
-		w.Logger.LogError(fmt.Sprintf(
+		w.Logger.Error(fmt.Sprintf(
 			"%s – error reading response body: %v",
 			w.APIName, readErr,
 		))
@@ -67,9 +67,9 @@ func (w *WeatherLoggingRoundTripper) RoundTrip(req *http.Request) (*http.Respons
 	)
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		w.Logger.LogInfo(logLine)
+		w.Logger.Info(logLine)
 	} else {
-		w.Logger.LogError(logLine)
+		w.Logger.Error(logLine)
 	}
 
 	return resp, nil

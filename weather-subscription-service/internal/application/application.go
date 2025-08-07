@@ -22,8 +22,10 @@ import (
 const shutdownTimeout = 5 * time.Second
 
 type Logger interface {
-	ConsoleLogInfo(msg string, fields ...zap.Field)
-	ConsoleLogError(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Debug(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
 	Sync() error
 }
 
@@ -66,7 +68,7 @@ func (a *Application) Initialize() {
 func (a *Application) Run() {
 	a.Initialize()
 
-	a.Logger.ConsoleLogInfo("application initialized")
+	a.Logger.Info("application initialized")
 
 	err := a.MailerService.Start()
 	if err != nil {

@@ -7,8 +7,11 @@ import (
 	"mailer/internal/config"
 	"mailer/internal/consumer"
 	"mailer/internal/smtp"
+	"os"
 	"pkg/env"
 	"pkg/logger"
+
+	"go.uber.org/zap/zapcore"
 )
 
 const logFile = "mailer.log"
@@ -49,11 +52,16 @@ func getRabbitConfig() config.RabbitConfig {
 }
 
 func main() {
-	logger, err := logger.NewLogger(logFile)
+	lvl := zapcore.InfoLevel
+	if os.Getenv("LOG_LEVEL") == "DEBUG" {
+		lvl = zapcore.DebugLevel
+	}
+
+	logger, err := logger.NewLogger(logFile, lvl)
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger.ConsoleLogInfo("Logger initialized.")
+	logger.Info("Logger initialized.")
 
 	smtpConfig := getSMTPConfig()
 	smtpMailer := smtp.NewSMTPMailer(

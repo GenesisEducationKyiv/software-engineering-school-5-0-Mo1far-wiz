@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"pkg/env"
 	"pkg/logger"
 	"time"
@@ -17,7 +18,9 @@ import (
 	"weather-subscription/internal/weather"
 	"weather-subscription/pkg/redis"
 
+	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap/zapcore"
 )
 
 const logFile = "weather.log"
@@ -107,7 +110,12 @@ func getRedisConfig() config.RedisConfig {
 }
 
 func main() {
-	logger, err := logger.NewLogger(logFile)
+	lvl := zapcore.InfoLevel
+	if os.Getenv("LOG_LEVEL") == "DEBUG" {
+		lvl = zapcore.DebugLevel
+	}
+
+	logger, err := logger.NewLogger(logFile, lvl)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -196,6 +204,10 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	router := gin.New()
+	router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
+	router.Use(ginzap.RecoveryWithZap(logger, true))
 
 	app := application.Application{
 		Config:            appConfig,

@@ -12,8 +12,10 @@ import (
 )
 
 type Logger interface {
-	ConsoleLogInfo(msg string, fields ...zap.Field)
-	ConsoleLogError(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Debug(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
 	Sync() error
 }
 
@@ -24,13 +26,13 @@ type Application struct {
 }
 
 func (a *Application) Run() {
-	a.Logger.ConsoleLogInfo("application initialized")
+	a.Logger.Info("application initialized")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	if err := a.Consumer.Start(ctx); err != nil {
-		a.Logger.ConsoleLogError("Failed to start consumer", zap.Error(err))
+		a.Logger.Error("Failed to start consumer", zap.Error(err))
 		return
 	}
 
@@ -38,13 +40,13 @@ func (a *Application) Run() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	a.Logger.ConsoleLogInfo("Shutdown signal received, stopping consumer...")
+	a.Logger.Debug("Shutdown signal received, stopping consumer...")
 
 	a.Consumer.Stop()
 
 	if err := a.Logger.Sync(); err != nil {
-		a.Logger.ConsoleLogError("Logger sync error", zap.Error(err))
+		a.Logger.Error("Logger sync error", zap.Error(err))
 	}
 
-	a.Logger.ConsoleLogInfo("Application exited properly")
+	a.Logger.Info("Application exited properly")
 }

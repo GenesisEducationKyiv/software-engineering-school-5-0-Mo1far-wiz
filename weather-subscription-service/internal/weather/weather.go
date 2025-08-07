@@ -14,8 +14,10 @@ import (
 )
 
 type Logger interface {
-	LogInfo(msg string, fields ...zap.Field)
-	LogError(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Debug(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
 }
 
 type APIInterface interface {
@@ -39,7 +41,7 @@ func (rs *WeatherAPIService) GetCityWeather(ctx context.Context, city string) (m
 		return weather, nil
 	}
 	if !errors.Is(err, svc.ErrorCacheMiss) {
-		rs.logger.LogError("cache service error", zap.Error(err))
+		rs.logger.Error("cache service error", zap.Error(err))
 	}
 
 	weather, err := rs.head.GetCityWeather(ctx, city)
@@ -52,7 +54,7 @@ func (rs *WeatherAPIService) GetCityWeather(ctx context.Context, city string) (m
 		return models.Weather{}, err
 	}
 	if err := rs.cache.Set(ctx, city, string(weatherRaw), 0); err != nil {
-		rs.logger.LogError("cache set failed", zap.Error(err))
+		rs.logger.Error("cache set failed", zap.Error(err))
 	}
 
 	return weather, nil

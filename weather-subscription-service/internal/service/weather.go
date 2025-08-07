@@ -25,7 +25,7 @@ func NewWeather(weatherAPIService *weather.WeatherAPIService, logger Logger) *We
 func (w *Weather) GetCityWeather(ctx context.Context, city string) (models.Weather, error) {
 	weather, err := w.weatherAPIService.GetCityWeather(ctx, city)
 	if err != nil {
-		w.logger.ConsoleLogError("on getting city weather",
+		w.logger.Error("on getting city weather",
 			zap.String("error", err.Error()))
 		return models.Weather{}, errors.Join(svc.ErrorGetCityWeather, err)
 	}

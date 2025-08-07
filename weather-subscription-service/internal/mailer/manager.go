@@ -41,10 +41,10 @@ type Manager struct {
 }
 
 type logger interface {
-	ConsoleLogInfo(msg string, fields ...zap.Field)
-	LogInfo(msg string, fields ...zap.Field)
-	ConsoleLogError(msg string, fields ...zap.Field)
-	LogError(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Debug(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
 }
 
 func New(
@@ -141,13 +141,13 @@ func (m *Manager) sendEmailBatch(frequency string, timeout time.Duration) {
 
 	targets := m.Targets.GetTargets(frequency)
 	if len(targets) == 0 {
-		m.Logger.LogInfo("No targets found", zap.String("frequency", frequency))
+		m.Logger.Warn("No targets found", zap.String("frequency", frequency))
 		return
 	}
 
 	forecasts := m.Forecasts.GetForecasts(ctx, targets)
 	if len(forecasts) == 0 {
-		m.Logger.LogInfo("No forecasts available", zap.String("frequency", frequency))
+		m.Logger.Warn("No forecasts available", zap.String("frequency", frequency))
 		return
 	}
 
@@ -155,14 +155,14 @@ func (m *Manager) sendEmailBatch(frequency string, timeout time.Duration) {
 
 	err := m.Publisher.BatchSendEmails(ctx, emails)
 	if err != nil {
-		m.Logger.LogError("Failed to send email batch",
+		m.Logger.Error("Failed to send email batch",
 			zap.String("frequency", frequency),
 			zap.Error(err),
 		)
 		return
 	}
 
-	m.Logger.LogInfo("Email batch sent",
+	m.Logger.Info("Email batch sent",
 		zap.String("frequency", frequency),
 		zap.Int("total", len(emails)),
 	)
@@ -234,7 +234,7 @@ func (m *Manager) SendEmail(to, subject, body string) error {
 	err := m.Publisher.SendEmail(context.Background(), email)
 
 	if err != nil {
-		m.Logger.LogError("Failed to send email",
+		m.Logger.Error("Failed to send email",
 			zap.String("to", to),
 			zap.String("subject", subject),
 			zap.Error(err),

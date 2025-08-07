@@ -16,8 +16,10 @@ import (
 const DefaultMessagePriority = 5
 
 type Logger interface {
-	LogInfo(msg string, fields ...zap.Field)
-	LogError(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Debug(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
 }
 
 type EmailPublisher struct {
@@ -60,7 +62,7 @@ func New(cfg config.PublishConfig, logger Logger) (*EmailPublisher, error) {
 func (p *EmailPublisher) SendEmail(ctx context.Context, email models.Email) error {
 	messageBytes, err := json.Marshal(email)
 	if err != nil {
-		p.logger.LogError("Failed to marshal email", zap.Error(err))
+		p.logger.Error("Failed to marshal email", zap.Error(err))
 		return fmt.Errorf("failed to marshal email: %w", err)
 	}
 
@@ -83,7 +85,7 @@ func (p *EmailPublisher) SendEmail(ctx context.Context, email models.Email) erro
 		rabbitmq.WithPublishOptionsExchange(p.exchangeName),
 	}
 
-	p.logger.LogInfo("Publishing email message",
+	p.logger.Info("Publishing email message",
 		zap.String("messageID", messageID),
 		zap.String("exchangeName", p.exchangeName),
 		zap.String("routingKey", p.routingKey),
@@ -98,7 +100,7 @@ func (p *EmailPublisher) SendEmail(ctx context.Context, email models.Email) erro
 	)
 
 	if err != nil {
-		p.logger.LogError("Failed to publish email",
+		p.logger.Error("Failed to publish email",
 			zap.Error(err),
 			zap.String("messageID", messageID),
 			zap.String("exchangeName", p.exchangeName),
@@ -109,7 +111,7 @@ func (p *EmailPublisher) SendEmail(ctx context.Context, email models.Email) erro
 		return fmt.Errorf("failed to publish email: %w", err)
 	}
 
-	p.logger.LogInfo("Email published successfully",
+	p.logger.Info("Email published successfully",
 		zap.String("messageID", messageID),
 		zap.String("exchangeName", p.exchangeName),
 		zap.String("routingKey", p.routingKey),
@@ -131,7 +133,7 @@ func (p *EmailPublisher) BatchSendEmails(ctx context.Context, emails []models.Em
 
 	for i, email := range emails {
 		if err := p.SendEmail(ctx, email); err != nil {
-			p.logger.LogError("Failed to send email in batch",
+			p.logger.Error("Failed to send email in batch",
 				zap.Error(err),
 				zap.Int("emailIndex", i),
 				zap.String("recipient", email.ToEmail),
@@ -142,7 +144,7 @@ func (p *EmailPublisher) BatchSendEmails(ctx context.Context, emails []models.Em
 		successCount++
 	}
 
-	p.logger.LogInfo("Batch email sending completed",
+	p.logger.Info("Batch email sending completed",
 		zap.Int("totalEmails", len(emails)),
 		zap.Int("successfulEmails", successCount),
 		zap.Int("failedEmails", len(emails)-successCount),

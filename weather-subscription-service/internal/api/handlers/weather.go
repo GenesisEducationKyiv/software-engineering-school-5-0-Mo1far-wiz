@@ -41,7 +41,7 @@ func (h *WeatherHandler) CityWeather(c *gin.Context) {
 			c.JSON(http.StatusNotFound, "City not found")
 		default:
 			c.JSON(http.StatusInternalServerError, "Internal service error")
-			h.logger.ConsoleLogError("Uncaught error, sending StatusInternalServerError",
+			h.logger.Error("Uncaught error, sending StatusInternalServerError",
 				zap.String("error", err.Error()))
 		}
 	}

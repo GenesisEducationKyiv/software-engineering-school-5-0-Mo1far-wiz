@@ -3,6 +3,7 @@ package logger
 import (
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -17,82 +18,64 @@ const (
 )
 
 type Logger struct {
-	console *zap.Logger
-	file    *zap.Logger
+	core zapcore.Core
+	*zap.Logger
 }
 
-func NewLogger(logFile string) (*Logger, error) {
-	consoleCfg := zap.NewDevelopmentConfig()
-	consoleCfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	consoleCfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	consoleCfg.DisableCaller = true
-	consoleCfg.DisableStacktrace = true
-
-	consoleLogger, err := consoleCfg.Build()
-	if err != nil {
-		return nil, errors.Wrap(err, "building console logger")
+func NewLogger(logFile string, level zapcore.Level) (*Logger, error) {
+	encCfg := zapcore.EncoderConfig{
+		TimeKey:      "ts",
+		LevelKey:     "lvl",
+		NameKey:      "logger",
+		CallerKey:    "caller",
+		MessageKey:   "msg",
+		EncodeTime:   zapcore.ISO8601TimeEncoder,
+		EncodeLevel:  zapcore.CapitalColorLevelEncoder,
+		EncodeCaller: zapcore.ShortCallerEncoder,
 	}
 
-	fileEncoderCfg := zap.NewProductionEncoderConfig()
-	fileEncoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
-	fileEncoder := zapcore.NewJSONEncoder(fileEncoderCfg)
+	consoleEncoder := zapcore.NewConsoleEncoder(encCfg)
+	consoleCore := zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), level)
 
-	rotatingFile := &lumberjack.Logger{
-		Filename:   logFile,
-		MaxSize:    fileMaxSizeMB,
-		MaxBackups: fileMaxBackups,
-		MaxAge:     fileMaxAgeDays,
-		Compress:   true,
-	}
+	fileEncoderCfg := encCfg
+	fileEncoderCfg.EncodeLevel = zapcore.CapitalLevelEncoder
+	fileCore := zapcore.NewCore(
+		zapcore.NewJSONEncoder(fileEncoderCfg),
+		zapcore.AddSync(&lumberjack.Logger{
+			Filename:   logFile,
+			MaxSize:    fileMaxSizeMB,
+			MaxBackups: fileMaxBackups,
+			MaxAge:     fileMaxAgeDays,
+			Compress:   true,
+		}),
+		level,
+	)
 
-	fileWS := zapcore.AddSync(rotatingFile)
-	fileCore := zapcore.NewCore(fileEncoder, fileWS, zapcore.InfoLevel)
-	fileLogger := zap.New(fileCore, zap.AddCaller())
+	combined := zapcore.NewTee(consoleCore, fileCore)
+	sampled := zapcore.NewSamplerWithOptions(
+		combined,
+		time.Second,
+		100,
+		10,
+	)
+
+	logger := zap.New(sampled,
+		zap.AddCaller(),
+		zap.Development(),
+	)
 
 	return &Logger{
-		console: consoleLogger,
-		file:    fileLogger,
+		core:   sampled,
+		Logger: logger,
 	}, nil
 }
 
 func (l *Logger) Sync() error {
-	if err := l.console.Sync(); err != nil {
+	if err := l.Logger.Sync(); err != nil {
 		if pe, ok := err.(*os.PathError); ok && pe.Err == syscall.ENOTTY {
-			// no-op
-		} else {
-			return errors.Wrap(err, "console logger sync")
+			return nil
 		}
+		return errors.Wrap(err, "logger sync")
 	}
-
-	if err := l.file.Sync(); err != nil {
-		return errors.Wrap(err, "file logger sync")
-	}
-
 	return nil
-}
-
-func (l *Logger) ConsoleLogInfo(msg string, fields ...zap.Field) {
-	l.console.Info(msg, fields...)
-}
-
-func (l *Logger) FileLogInfo(msg string, fields ...zap.Field) {
-	l.file.Info(msg, fields...)
-}
-
-func (l *Logger) ConsoleLogError(msg string, fields ...zap.Field) {
-	l.console.Error(msg, fields...)
-}
-
-func (l *Logger) FileLogError(msg string, fields ...zap.Field) {
-	l.file.Error(msg, fields...)
-}
-
-func (l *Logger) LogInfo(msg string, fields ...zap.Field) {
-	l.FileLogInfo(msg, fields...)
-	l.ConsoleLogInfo(msg, fields...)
-}
-
-func (l *Logger) LogError(msg string, fields ...zap.Field) {
-	l.FileLogError(msg, fields...)
-	l.ConsoleLogError(msg, fields...)
 }

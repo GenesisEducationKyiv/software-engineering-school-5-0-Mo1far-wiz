@@ -17,8 +17,10 @@ type smtpMailer interface {
 }
 
 type logger interface {
-	ConsoleLogInfo(msg string, fields ...zap.Field)
-	ConsoleLogError(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Debug(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
 }
 
 type RabbitConsumer struct {
@@ -64,34 +66,34 @@ func (r *RabbitConsumer) Start(ctx context.Context) error {
 	}
 
 	r.running = true
-	r.logger.ConsoleLogInfo("Starting RabbitMQ consumer...")
+	r.logger.Info("Starting RabbitMQ consumer...")
 
 	go func() {
 		defer func() { r.running = false }()
 
 		err := r.consumer.Run(func(d rabbitmq.Delivery) rabbitmq.Action {
 			if err := r.processMessage(d); err != nil {
-				r.logger.ConsoleLogError("Failed to process message", zap.Error(err))
+				r.logger.Error("Failed to process message", zap.Error(err))
 				return r.handleError(err)
 			}
 
-			r.logger.ConsoleLogInfo("Message processed successfully", zap.String("messageID", d.MessageId))
+			r.logger.Info("Message processed successfully", zap.String("messageID", d.MessageId))
 			return rabbitmq.Ack
 		})
 
 		if err != nil {
-			r.logger.ConsoleLogError("Consumer stopped with error", zap.Error(err))
+			r.logger.Error("Consumer stopped with error", zap.Error(err))
 		} else {
-			r.logger.ConsoleLogInfo("Consumer stopped gracefully")
+			r.logger.Info("Consumer stopped gracefully")
 		}
 	}()
 
-	r.logger.ConsoleLogInfo("Consumer started and running persistently...")
+	r.logger.Debug("Consumer started and running persistently...")
 	return nil
 }
 
 func (r *RabbitConsumer) processMessage(d rabbitmq.Delivery) error {
-	r.logger.ConsoleLogInfo(
+	r.logger.Info(
 		"Received message",
 		zap.String("messageID", d.MessageId),
 		zap.String("routingKey", d.RoutingKey),
@@ -100,7 +102,7 @@ func (r *RabbitConsumer) processMessage(d rabbitmq.Delivery) error {
 
 	var email models.Email
 	if err := json.Unmarshal(d.Body, &email); err != nil {
-		r.logger.ConsoleLogError("Failed to unmarshal message", zap.Error(err))
+		r.logger.Error("Failed to unmarshal message", zap.Error(err))
 		return &ValidationError{Err: err}
 	}
 
@@ -110,21 +112,21 @@ func (r *RabbitConsumer) processMessage(d rabbitmq.Delivery) error {
 func (r *RabbitConsumer) handleError(err error) rabbitmq.Action {
 	switch err.(type) {
 	case *ValidationError:
-		r.logger.ConsoleLogError("Validation error, discarding message", zap.Error(err))
+		r.logger.Error("Validation error, discarding message", zap.Error(err))
 		return rabbitmq.NackDiscard
 	default:
-		r.logger.ConsoleLogError("Unknown error, discarding message", zap.Error(err))
+		r.logger.Error("Unknown error, discarding message", zap.Error(err))
 		return rabbitmq.NackDiscard
 	}
 }
 
 func (r *RabbitConsumer) Stop() {
 	if !r.running {
-		r.logger.ConsoleLogInfo("Consumer is not running")
+		r.logger.Warn("Consumer is not running")
 		return
 	}
 
-	r.logger.ConsoleLogInfo("Stopping RabbitMQ consumer...")
+	r.logger.Info("Stopping RabbitMQ consumer...")
 
 	if r.consumer != nil {
 		r.consumer.Close()
