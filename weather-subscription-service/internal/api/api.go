@@ -5,6 +5,7 @@ import (
 	"weather-subscription/internal/api/middleware"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func Mount(
@@ -14,6 +15,8 @@ func Mount(
 	logger handlers.Logger,
 ) {
 	gin.SetMode(gin.ReleaseMode)
+
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	weatherHandler := handlers.NewWeatherHandler(weatherService, logger)
 	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService, logger)

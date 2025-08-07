@@ -2,12 +2,9 @@ package metrics
 
 import (
 	"fmt"
-	"log"
-	"net/http"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -91,25 +88,6 @@ func Init() {
 		SubscriptionLatency,
 		ActiveSubscriptions,
 	)
-
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
-
-	// Start the metrics server
-	server := &http.Server{
-		Addr:              ":9090",
-		Handler:           mux,
-		ReadHeaderTimeout: time.Second,
-	}
-
-	go func() {
-		log.Println("Starting Prometheus metrics server on :9090")
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("Error starting metrics server: %v", err)
-		}
-	}()
-
-	log.Println("Prometheus metrics server started on :9090")
 }
 
 func ObserveRequest(service string, f func() error) error {

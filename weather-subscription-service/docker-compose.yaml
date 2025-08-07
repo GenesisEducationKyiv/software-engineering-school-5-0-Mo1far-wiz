@@ -47,7 +47,6 @@ services:
 
     ports:
       - "${WEATHER_PORT}:${WEATHER_PORT}"
-      - "9090:9090"
     depends_on:
       postgres:
         condition: service_healthy

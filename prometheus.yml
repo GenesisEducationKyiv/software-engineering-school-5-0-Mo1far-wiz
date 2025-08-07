@@ -5,7 +5,7 @@ global:
 scrape_configs:
   - job_name: 'weather-service'
     static_configs:
-      - targets: ['weather:9090']
+      - targets: ['weather:8080']
     scrape_interval: 15s
     metrics_path: /metrics
 
