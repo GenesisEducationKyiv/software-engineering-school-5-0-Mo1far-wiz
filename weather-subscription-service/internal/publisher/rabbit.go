@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 	"weather-subscription/internal/config"
+	"weather-subscription/internal/metrics"
 	"weather-subscription/internal/models"
 
 	"github.com/wagslane/go-rabbitmq"
@@ -60,67 +61,69 @@ func New(cfg config.PublishConfig, logger Logger) (*EmailPublisher, error) {
 }
 
 func (p *EmailPublisher) SendEmail(ctx context.Context, email models.Email) error {
-	messageBytes, err := json.Marshal(email)
-	if err != nil {
-		p.logger.Error("Failed to marshal email", zap.Error(err))
-		return fmt.Errorf("failed to marshal email: %w", err)
-	}
+	return metrics.ObserveRequest("email_publisher", func() error {
+		messageBytes, err := json.Marshal(email)
+		if err != nil {
+			p.logger.Error("Failed to marshal email", zap.Error(err))
+			return fmt.Errorf("failed to marshal email: %w", err)
+		}
 
-	messageID := generateMessageID()
+		messageID := generateMessageID()
 
-	headers := map[string]interface{}{
-		"message_type": "email",
-		"recipient":    email.ToEmail,
-		"published_at": time.Now().UTC().Format(time.RFC3339),
-		"content_type": "application/json",
-		"exchange":     p.exchangeName,
-	}
+		headers := map[string]interface{}{
+			"message_type": "email",
+			"recipient":    email.ToEmail,
+			"published_at": time.Now().UTC().Format(time.RFC3339),
+			"content_type": "application/json",
+			"exchange":     p.exchangeName,
+		}
 
-	publishOptions := []func(*rabbitmq.PublishOptions){
-		rabbitmq.WithPublishOptionsContentType("application/json"),
-		rabbitmq.WithPublishOptionsHeaders(headers),
-		rabbitmq.WithPublishOptionsMessageID(messageID),
-		rabbitmq.WithPublishOptionsPersistentDelivery,
-		rabbitmq.WithPublishOptionsPriority(DefaultMessagePriority),
-		rabbitmq.WithPublishOptionsExchange(p.exchangeName),
-	}
+		publishOptions := []func(*rabbitmq.PublishOptions){
+			rabbitmq.WithPublishOptionsContentType("application/json"),
+			rabbitmq.WithPublishOptionsHeaders(headers),
+			rabbitmq.WithPublishOptionsMessageID(messageID),
+			rabbitmq.WithPublishOptionsPersistentDelivery,
+			rabbitmq.WithPublishOptionsPriority(DefaultMessagePriority),
+			rabbitmq.WithPublishOptionsExchange(p.exchangeName),
+		}
 
-	p.logger.Info("Publishing email message",
-		zap.String("messageID", messageID),
-		zap.String("exchangeName", p.exchangeName),
-		zap.String("routingKey", p.routingKey),
-		zap.String("recipient", email.ToEmail),
-	)
+		p.logger.Info("Publishing email message",
+			zap.String("messageID", messageID),
+			zap.String("exchangeName", p.exchangeName),
+			zap.String("routingKey", p.routingKey),
+			zap.String("recipient", email.ToEmail),
+		)
 
-	err = p.publisher.PublishWithContext(
-		ctx,
-		messageBytes,
-		[]string{p.routingKey},
-		publishOptions...,
-	)
+		err = p.publisher.PublishWithContext(
+			ctx,
+			messageBytes,
+			[]string{p.routingKey},
+			publishOptions...,
+		)
 
-	if err != nil {
-		p.logger.Error("Failed to publish email",
-			zap.Error(err),
+		if err != nil {
+			p.logger.Error("Failed to publish email",
+				zap.Error(err),
+				zap.String("messageID", messageID),
+				zap.String("exchangeName", p.exchangeName),
+				zap.String("routingKey", p.routingKey),
+				zap.String("recipient", email.ToEmail),
+				zap.String("subject", email.Subject),
+			)
+			return fmt.Errorf("failed to publish email: %w", err)
+		}
+
+		p.logger.Info("Email published successfully",
 			zap.String("messageID", messageID),
 			zap.String("exchangeName", p.exchangeName),
 			zap.String("routingKey", p.routingKey),
 			zap.String("recipient", email.ToEmail),
 			zap.String("subject", email.Subject),
+			zap.Int("messageSize", len(messageBytes)),
 		)
-		return fmt.Errorf("failed to publish email: %w", err)
-	}
 
-	p.logger.Info("Email published successfully",
-		zap.String("messageID", messageID),
-		zap.String("exchangeName", p.exchangeName),
-		zap.String("routingKey", p.routingKey),
-		zap.String("recipient", email.ToEmail),
-		zap.String("subject", email.Subject),
-		zap.Int("messageSize", len(messageBytes)),
-	)
-
-	return nil
+		return nil
+	})
 }
 
 func (p *EmailPublisher) BatchSendEmails(ctx context.Context, emails []models.Email) error {

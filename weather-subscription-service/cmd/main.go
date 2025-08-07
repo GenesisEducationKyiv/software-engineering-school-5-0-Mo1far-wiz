@@ -14,6 +14,7 @@ import (
 	"weather-subscription/internal/config"
 	"weather-subscription/internal/database"
 	"weather-subscription/internal/mailer"
+	"weather-subscription/internal/metrics"
 	"weather-subscription/internal/store"
 	"weather-subscription/internal/weather"
 	"weather-subscription/pkg/redis"
@@ -110,6 +111,8 @@ func getRedisConfig() config.RedisConfig {
 }
 
 func main() {
+	metrics.Init()
+
 	lvl := zapcore.InfoLevel
 	if os.Getenv("LOG_LEVEL") == "DEBUG" {
 		lvl = zapcore.DebugLevel

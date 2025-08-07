@@ -2,10 +2,12 @@ package mailer
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
 	"weather-subscription/internal/config"
+	"weather-subscription/internal/metrics"
 	"weather-subscription/internal/models"
 	"weather-subscription/internal/publisher"
 	"weather-subscription/internal/weather"
@@ -136,36 +138,45 @@ func (m *Manager) runScheduler(
 }
 
 func (m *Manager) sendEmailBatch(frequency string, timeout time.Duration) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	err := metrics.ObserveRequest(
+		fmt.Sprintf("email_batch_%s", frequency),
+		func() error {
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			defer cancel()
 
-	targets := m.Targets.GetTargets(frequency)
-	if len(targets) == 0 {
-		m.Logger.Warn("No targets found", zap.String("frequency", frequency))
-		return
-	}
+			targets := m.Targets.GetTargets(frequency)
+			if len(targets) == 0 {
+				m.Logger.Warn("No targets found", zap.String("frequency", frequency))
+				return nil
+			}
 
-	forecasts := m.Forecasts.GetForecasts(ctx, targets)
-	if len(forecasts) == 0 {
-		m.Logger.Warn("No forecasts available", zap.String("frequency", frequency))
-		return
-	}
+			metrics.CacheSizeGauge.WithLabelValues("subscribers", frequency).
+				Set(float64(len(targets)))
 
-	emails := m.buildEmails(ctx, forecasts, m.getSubjectPrefix(frequency))
+			forecasts := m.Forecasts.GetForecasts(ctx, targets)
+			if len(forecasts) == 0 {
+				m.Logger.Warn("No forecasts available", zap.String("frequency", frequency))
+				return nil
+			}
 
-	err := m.Publisher.BatchSendEmails(ctx, emails)
-	if err != nil {
-		m.Logger.Error("Failed to send email batch",
-			zap.String("frequency", frequency),
-			zap.Error(err),
-		)
-		return
-	}
+			metrics.CacheSizeGauge.WithLabelValues("forecasts", frequency).
+				Set(float64(len(forecasts)))
 
-	m.Logger.Info("Email batch sent",
-		zap.String("frequency", frequency),
-		zap.Int("total", len(emails)),
+			emails := m.buildEmails(ctx, forecasts, m.getSubjectPrefix(frequency))
+
+			if err := m.Publisher.BatchSendEmails(ctx, emails); err != nil {
+				return err
+			}
+			m.Logger.Info("Email batch sent",
+				zap.String("frequency", frequency),
+				zap.Int("total", len(emails)),
+			)
+			return nil
+		},
 	)
+	if err != nil {
+		m.Logger.Error("Batch job failed", zap.String("frequency", frequency), zap.Error(err))
+	}
 }
 
 func (m *Manager) buildEmails(
@@ -225,21 +236,16 @@ func (m *Manager) Stop() {
 }
 
 func (m *Manager) SendEmail(to, subject, body string) error {
-	email := models.Email{
-		ToEmail: to,
-		Subject: subject,
-		Body:    body,
-	}
-
-	err := m.Publisher.SendEmail(context.Background(), email)
-
-	if err != nil {
-		m.Logger.Error("Failed to send email",
-			zap.String("to", to),
-			zap.String("subject", subject),
-			zap.Error(err),
-		)
-		return errors.Wrap(err, "failed to send email")
-	}
-	return nil
+	return metrics.ObserveRequest("email_send_manual", func() error {
+		email := models.Email{ToEmail: to, Subject: subject, Body: body}
+		if err := m.Publisher.SendEmail(context.Background(), email); err != nil {
+			m.Logger.Error("Failed to send email",
+				zap.String("to", to),
+				zap.String("subject", subject),
+				zap.Error(err),
+			)
+			return errors.Wrap(err, "failed to send email")
+		}
+		return nil
+	})
 }
