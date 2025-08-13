@@ -3,6 +3,8 @@ package service
 import "go.uber.org/zap"
 
 type Logger interface {
-	ConsoleLogInfo(msg string, fields ...zap.Field)
-	ConsoleLogError(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Debug(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
 }

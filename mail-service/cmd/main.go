@@ -5,10 +5,13 @@ import (
 	"log"
 	"mailer/internal/application"
 	"mailer/internal/config"
-	"mailer/internal/service"
+	"mailer/internal/consumer"
 	"mailer/internal/smtp"
+	"os"
 	"pkg/env"
 	"pkg/logger"
+
+	"go.uber.org/zap/zapcore"
 )
 
 const logFile = "mailer.log"
@@ -34,24 +37,49 @@ func getSMTPConfig() config.SMTPConfig {
 	}
 }
 
+func getRabbitConfig() config.RabbitConfig {
+	addr := env.GetString("RABBIT_ADDR", "addr")
+	queueName := env.GetString("QUEUE_NAME", "queue")
+	routingKey := env.GetString("ROUTING_KEY", "key")
+	exchangeName := env.GetString("EXCHANGE_NAME", "labubu")
+
+	return config.RabbitConfig{
+		Addr:         addr,
+		QueueName:    queueName,
+		RoutingKey:   routingKey,
+		ExchangeName: exchangeName,
+	}
+}
+
 func main() {
-	logger, err := logger.NewLogger(logFile)
+	lvl := zapcore.InfoLevel
+	if os.Getenv("LOG_LEVEL") == "DEBUG" {
+		lvl = zapcore.DebugLevel
+	}
+
+	logger, err := logger.NewLogger(logFile, lvl)
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger.ConsoleLogInfo("Logger initialized.")
+	logger.Info("Logger initialized.")
 
 	smtpConfig := getSMTPConfig()
 	smtpMailer := smtp.NewSMTPMailer(
 		smtpConfig, logger,
 	)
 
-	mailer := service.NewMailer(smtpMailer, logger)
+	rabbitConfig := getRabbitConfig()
+	rabbitConsumer := consumer.New(rabbitConfig, smtpMailer, logger)
+	if rabbitConsumer == nil {
+		log.Fatal("Failed to create RabbitMQ consumer")
+	}
+	defer rabbitConsumer.Stop()
+
 	applicationConfig := getApplicationConfig()
 	app := &application.Application{
-		Config: applicationConfig,
-		Logger: logger,
-		Mailer: mailer,
+		Config:   applicationConfig,
+		Logger:   logger,
+		Consumer: rabbitConsumer,
 	}
 	app.Run()
 }

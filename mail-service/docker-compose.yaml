@@ -15,6 +15,11 @@ services:
       SMTP_PASS:           "${SMTP_PASS}"
       SMTP_HOST:           "${SMTP_HOST}"
       SMTP_PORT:           "${SMTP_PORT}"
+      # Rabbit
+      RABBIT_ADDR: "amqp://admin:password@rabbit:5672/"
+      QUEUE_NAME: "mail_queue"
+      ROUTING_KEY: "email.send"
+      EXCHANGE_NAME: "mail_exchange"
     ports:
         - "${MAILER_PORT}:${MAILER_PORT}"
     networks:

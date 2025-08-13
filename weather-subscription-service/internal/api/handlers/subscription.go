@@ -57,7 +57,7 @@ func NewSubscriptionHandler(
 func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 	var req subscribeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		s.logger.ConsoleLogError("cant bind request to json",
+		s.logger.Error("cant bind request to json",
 			zap.String("error", err.Error()))
 		c.JSON(http.StatusBadRequest, "Invalid input")
 		return
@@ -81,7 +81,7 @@ func (s *SubscriptionHandler) Subscribe(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, "Can't send email")
 		default:
 			c.JSON(http.StatusInternalServerError, "Internal service error")
-			s.logger.ConsoleLogError("Uncaught error, sending StatusInternalServerError",
+			s.logger.Error("Uncaught error, sending StatusInternalServerError",
 				zap.String("error", err.Error()))
 		}
 		return
@@ -104,7 +104,7 @@ func (s *SubscriptionHandler) Confirm(c *gin.Context) {
 			c.JSON(http.StatusNotFound, "Can't confirm subscription")
 		default:
 			c.JSON(http.StatusInternalServerError, "Internal service error")
-			s.logger.ConsoleLogError("Uncaught error, sending StatusInternalServerError",
+			s.logger.Error("Uncaught error, sending StatusInternalServerError",
 				zap.String("error", err.Error()))
 		}
 		return
@@ -127,7 +127,7 @@ func (s *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 			c.JSON(http.StatusNotFound, "Can't cancel subscription")
 		default:
 			c.JSON(http.StatusInternalServerError, "Internal service error")
-			s.logger.ConsoleLogError("Uncaught error, sending StatusInternalServerError",
+			s.logger.Error("Uncaught error, sending StatusInternalServerError",
 				zap.String("error", err.Error()))
 		}
 		return

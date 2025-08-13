@@ -39,3 +39,9 @@ type RedisConfig struct {
 type MailServiceConfig struct {
 	Addr string
 }
+
+type PublishConfig struct {
+	Addr         string
+	ExchangeName string
+	RoutingKey   string
+}

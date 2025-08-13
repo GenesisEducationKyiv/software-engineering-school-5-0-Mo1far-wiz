@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"pkg/env"
 	"pkg/logger"
 	"time"
@@ -13,11 +14,14 @@ import (
 	"weather-subscription/internal/config"
 	"weather-subscription/internal/database"
 	"weather-subscription/internal/mailer"
+	"weather-subscription/internal/metrics"
 	"weather-subscription/internal/store"
 	"weather-subscription/internal/weather"
 	"weather-subscription/pkg/redis"
 
+	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap/zapcore"
 )
 
 const logFile = "weather.log"
@@ -82,11 +86,15 @@ func getVisualCrossingAPIConfig() config.WeatherAPIConfig {
 	}
 }
 
-func getMailServiceConfig() config.MailServiceConfig {
-	mailerAddr := env.GetString("MAILER_ADDR", "wrong-addr")
+func getPublisherConfig() config.PublishConfig {
+	addr := env.GetString("RABBIT_ADDR", "addr")
+	routingKey := env.GetString("ROUTING_KEY", "key")
+	exchangeName := env.GetString("EXCHANGE_NAME", "labubu")
 
-	return config.MailServiceConfig{
-		Addr: mailerAddr,
+	return config.PublishConfig{
+		Addr:         addr,
+		RoutingKey:   routingKey,
+		ExchangeName: exchangeName,
 	}
 }
 
@@ -103,7 +111,14 @@ func getRedisConfig() config.RedisConfig {
 }
 
 func main() {
-	logger, err := logger.NewLogger(logFile)
+	metrics.Init()
+
+	lvl := zapcore.InfoLevel
+	if os.Getenv("LOG_LEVEL") == "DEBUG" {
+		lvl = zapcore.DebugLevel
+	}
+
+	logger, err := logger.NewLogger(logFile, lvl)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -183,8 +198,8 @@ func main() {
 		log.Panic(err)
 	}
 
-	mailServiceConfig := getMailServiceConfig()
-	mailerService := mailer.New(mailServiceConfig, weatherAPIService, logger)
+	publisherConfig := getPublisherConfig()
+	mailerService := mailer.New(publisherConfig, weatherAPIService, logger)
 
 	ctx, cancel := context.WithTimeout(context.Background(), mailer.LoadTimeoutDuration)
 	err = mailerService.LoadTargets(ctx, store.Mailer)
@@ -192,6 +207,10 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	router := gin.New()
+	router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
+	router.Use(ginzap.RecoveryWithZap(logger, true))
 
 	app := application.Application{
 		Config:            appConfig,
