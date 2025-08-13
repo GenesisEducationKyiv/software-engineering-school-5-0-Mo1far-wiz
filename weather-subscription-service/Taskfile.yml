@@ -1,0 +1,145 @@
+# https://taskfile.dev
+
+version: '3'
+
+# dotenv:
+#   - .env
+
+vars:
+  BINARY_NAME: 'weather-service'
+  MAIN_PATH: './cmd/main.go'
+  DB_URL: 'postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@{{.DB_HOST}}:{{.DB_PORT}}/{{.DB_NAME}}?sslmode={{.DB_SSL_MODE}}'
+
+tasks:
+  lint:
+    desc: Runs Linter.
+    cmds:
+      - bash -c "golangci-lint run --config <(curl -s https://raw.githubusercontent.com/fabl3ss/genesis-se-school-linter/refs/heads/main/.golangci.yaml)"
+    silent: true
+
+  up:
+    desc: Runs docker compose images.
+    cmds:
+      - echo "Starting all services..."
+      - docker compose up -d
+    silent: true
+
+  down:
+    desc: Downs docker compose images.
+    cmds:
+      - echo "Stopping all services..."
+      - docker compose down
+    silent: true
+
+  db-up:
+    desc: Runs database image.
+    cmds:
+      - echo "Starting database container..."
+      - docker compose up -d postgres
+    silent: true
+
+  testdb-up:
+    desc: Runs test database image.
+    cmds:
+      - echo "Starting test database container..."
+      - docker compose -f docker-compose.test.yaml up -d testdb
+    silent: true
+
+  db-down:
+    desc: Downs database image.
+    cmds:
+      - echo "Stopping database container..."
+      - docker compose stop postgres
+    silent: true
+
+  testdb-down:
+    desc: Downs test database image.
+    cmds:
+      - echo "Stopping test database container..."
+      - docker compose -f docker-compose.test.yaml stop testdb
+      - docker compose -f docker-compose.test.yaml rm -f testdb
+    silent: true
+
+  clean:
+    desc: Deletes bin/ and runs `go clean`.
+    cmds:
+      - rm -rf bin
+      - go clean
+    silent: true
+
+  build:
+    desc: Builds project binary {{.BINARY_NAME}}.
+    cmds:
+      - mkdir -p bin
+      - go build -o bin/{{.BINARY_NAME}} {{.MAIN_PATH}}
+    silent: true
+    requires:
+      vars: [BINARY_NAME, MAIN_PATH]
+
+  run:
+    desc: Builds project binary {{.BINARY_NAME}} and runs it.
+    deps:
+      - build
+      - db-up
+      - redis-up
+    cmds:
+      - APP_PORT={{.APP_PORT}}
+      - DB_URL="{{.DB_URL}}"
+      - ./bin/{{.BINARY_NAME}}
+      - defer: {task: redis-down}
+      - defer: {task: db-down}
+    silent: true
+    requires:
+      vars: [APP_PORT, DB_URL, BINARY_NAME]
+
+  migrate-up:
+    desc: Runs migrations in folder {{.MIGRATION_PATH}}.
+    cmds:
+      - migrate -path={{.MIGRATION_PATH}} -database="{{.DB_URL}}" up
+    silent: true
+    requires:
+      vars: [MIGRATION_PATH, DB_URL]
+
+  migrate-down:
+    desc: Runs migrations down in folder {{.MIGRATION_PATH}}.
+    cmds:
+      - migrate -path={{.MIGRATION_PATH}} -database="{{.DB_URL}}" down
+    silent: true
+    requires:
+      vars: [MIGRATION_PATH, DB_URL]
+
+  test-integration:
+    desc: Integration tests (spin ups database in docker)
+    deps:
+      - testdb-up
+    cmds:
+      - go test -v ./internal/api/...
+      - defer: {task: testdb-down}
+    ignore_error: true
+    silent: true
+
+  test-unit:
+    desc: Unit tests (no external dependencies)
+    cmds:
+      - go test -v $(go list ./... | grep -v 'internal/api')
+    silent: true
+
+  test:
+    desc: Run both unit and integration tests
+    deps:
+      - test-unit
+      - test-integration
+
+  redis-up:
+    desc: Runs the Redis container.
+    cmds:
+      - echo "Starting Redis container..."
+      - docker compose up -d redis
+    silent: true
+
+  redis-down:
+    desc: Stops the Redis container.
+    cmds:
+      - echo "Stopping Redis container..."
+      - docker compose stop redis
+    silent: true

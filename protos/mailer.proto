@@ -1,0 +1,20 @@
+edition = "2023";
+
+package mailer;
+option go_package = "weather/protos/mailer";
+
+message Email {
+  string to_email = 1;
+  string subject  = 2;
+  string body     = 3;
+}
+
+message Result {
+  uint64 success   = 1;
+  uint64 failed    = 2;
+}
+
+service MailService {
+  // Stream emails to service and get Result
+  rpc SendEmail (stream Email) returns (Result);
+}

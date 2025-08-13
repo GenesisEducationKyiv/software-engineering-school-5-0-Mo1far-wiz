@@ -1,0 +1,73 @@
+version: "3"
+
+# default: [build]
+
+# dotenv:
+#   - .env
+
+vars:
+  PROTO_DIR: ../protos
+  PROTO_OUT: ../pkg/protos/mailer
+
+tasks:
+  proto:
+    desc: Generate Go gRPC code from the mailer.proto definition
+    cmds:
+      - mkdir -p {{.PROTO_OUT}}
+      - protoc \
+        -I {{.PROTO_DIR}} \
+        --go_out=paths=source_relative:{{.PROTO_OUT}} \
+        --go-grpc_out=paths=source_relative:{{.PROTO_OUT}} \
+        {{.PROTO_DIR}}/mailer.proto
+
+  build:
+    desc: Build the mail-service binary
+    #deps: [proto]
+    cmds:
+      - go build -o bin/mail-service cmd/main.go
+
+  run:
+    desc: Run the mail-service (built binary)
+    deps: [build]
+    cmds:
+      - ./bin/mail-service
+
+  test:
+    desc: Execute all Go tests
+    cmds:
+      - go test ./...
+
+  lint:
+    desc: Run static analysis with golangci-lint
+    cmds:
+      - bash -c "golangci-lint run --config <(curl -s https://raw.githubusercontent.com/fabl3ss/genesis-se-school-linter/refs/heads/main/.golangci.yaml)"
+    silent: true
+
+  tidy:
+    desc: Clean up go.mod/go.sum
+    cmds:
+      - go mod tidy
+
+  docker:
+    desc: Build Docker image for mail-service
+    cmds:
+      - docker build -t mail-service .
+
+  docker-run:
+    desc: Run mail-service Docker container (exposes :50051)
+    cmds:
+      - docker run --rm -p 50051:50051 mail-service
+
+  up:
+    desc: Runs docker compose images.
+    cmds:
+      - echo "Starting all services..."
+      - docker compose up -d
+    silent: true
+
+  down:
+    desc: Downs docker compose images.
+    cmds:
+      - echo "Stopping all services..."
+      - docker compose down
+    silent: true

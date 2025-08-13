@@ -1,0 +1,13 @@
+services:
+  testdb:
+    image: postgres:15
+    environment:
+      POSTGRES_DB:       test_weather
+      POSTGRES_USER:     test
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "test"]
+      interval: 10s
+      retries: 5

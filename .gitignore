@@ -2,4 +2,4 @@
 
 .golangci.yaml
 
-weather.log
+*/*.log

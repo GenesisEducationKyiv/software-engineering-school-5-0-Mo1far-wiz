@@ -1,145 +1,70 @@
-# https://taskfile.dev
-
 version: '3'
 
 dotenv:
   - .env
 
-vars:
-  BINARY_NAME: 'weather-service'
-  MAIN_PATH: './cmd/main.go'
-  DB_URL: 'postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@{{.DB_HOST}}:{{.DB_PORT}}/{{.DB_NAME}}?sslmode={{.DB_SSL_MODE}}'
+includes:
+  mail:
+    taskfile: ./mail-service/Taskfile.yml
+    dir: ./mail-service
+  weather:
+    taskfile: ./weather-subscription-service/Taskfile.yml
+    dir: ./weather-subscription-service
 
 tasks:
   lint:
-    desc: Runs Linter.
+    desc: Run linters for both services
     cmds:
-      - bash -c "golangci-lint run --config <(curl -s https://raw.githubusercontent.com/fabl3ss/genesis-se-school-linter/refs/heads/main/.golangci.yaml)"
-    silent: true
+      - task: mail:lint
+      - task: weather:lint
+
+  build:
+    desc: Build both mail-service and weather-service
+    cmds:
+      - task: mail:build
+      - task: weather:build
+
+  test:
+    desc: Execute all tests (unit & integration) for both services
+    cmds:
+      - task: mail:test
+      - task: weather:test
 
   up:
-    desc: Runs docker-compose images.
+    desc: Start whole infrastructure (subscription-service, mail-service, DB, Redis, etc.)
     cmds:
-      - echo "Starting all services..."
-      - docker-compose up -d
+      - docker network create app-net || true
+      - task: mail:up
+      - task: weather:up
     silent: true
 
   down:
-    desc: Downs docker-compose images.
+    desc: Stop whole infrastructure (subscription-service, mail-service, DB, Redis, etc.)
     cmds:
-      - echo "Stopping all services..."
-      - docker-compose down
+      - task: mail:down
+      - task: weather:down
+      - docker network rm app-net || true
     silent: true
 
-  db-up:
-    desc: Runs database image.
+  run-mail:
+    desc: Build & run only mail-service
     cmds:
-      - echo "Starting database container..."
-      - docker-compose up -d postgres
-    silent: true
+      - task: mail:run
 
-  testdb-up:
-    desc: Runs test database image.
+  run-weather:
+    desc: Build & run only weather-service
     cmds:
-      - echo "Starting test database container..."
-      - docker-compose -f docker-compose.test.yaml up -d testdb
-    silent: true
+      - task: weather:run
 
-  db-down:
-    desc: Downs database image.
+  proto-mailer:
+    desc: Generate Go + gRPC code from your .proto files
     cmds:
-      - echo "Stopping database container..."
-      - docker-compose stop postgres
-    silent: true
-
-  testdb-down:
-    desc: Downs test database image.
-    cmds:
-      - echo "Stopping test database container..."
-      - docker-compose -f docker-compose.test.yaml stop testdb
-      - docker-compose -f docker-compose.test.yaml rm -f testdb
-    silent: true
-
-  clean:
-    desc: Deletes bin/ and runs `go clean`.
-    cmds:
-      - rm -rf bin
-      - go clean
-    silent: true
-
-  build:
-    desc: Builds project binary {{.BINARY_NAME}}.
-    cmds:
-      - mkdir -p bin
-      - go build -o bin/{{.BINARY_NAME}} {{.MAIN_PATH}}
-    silent: true
-    requires:
-      vars: [BINARY_NAME, MAIN_PATH]
-
-  run:
-    desc: Builds project binary {{.BINARY_NAME}} and runs it.
-    deps:
-      - build
-      - db-up
-      - redis-up
-    cmds:
-      - APP_PORT={{.APP_PORT}}
-      - DB_URL="{{.DB_URL}}"
-      - ./bin/{{.BINARY_NAME}}
-      - defer: {task: redis-down}
-      - defer: {task: db-down}
-    silent: true
-    requires:
-      vars: [APP_PORT, DB_URL, BINARY_NAME]
-
-  migrate-up:
-    desc: Runs migrations in folder {{.MIGRATION_PATH}}.
-    cmds:
-      - migrate -path={{.MIGRATION_PATH}} -database="{{.DB_URL}}" up
-    silent: true
-    requires:
-      vars: [MIGRATION_PATH, DB_URL]
-
-  migrate-down:
-    desc: Runs migrations down in folder {{.MIGRATION_PATH}}.
-    cmds:
-      - migrate -path={{.MIGRATION_PATH}} -database="{{.DB_URL}}" down
-    silent: true
-    requires:
-      vars: [MIGRATION_PATH, DB_URL]
-
-  test-integration:
-    desc: Integration tests (spin ups database in docker)
-    deps:
-      - testdb-up
-    cmds:
-      - go test -v ./internal/api/...
-      - defer: {task: testdb-down}
-    ignore_error: true
-    silent: true
-
-  test-unit:
-    desc: Unit tests (no external dependencies)
-    cmds:
-      - go test -v $(go list ./... | grep -v 'internal/api')
-    silent: true
-
-  test:
-    desc: Run both unit and integration tests
-    deps:
-      - test-unit
-      - test-integration
-
-  redis-up:
-    desc: Runs the Redis container.
-    cmds:
-      - echo "Starting Redis container..."
-      - docker-compose up -d redis
-    silent: true
-
-  redis-down:
-    desc: Stops the Redis container.
-    cmds:
-      - echo "Stopping Redis container..."
-      - docker-compose stop redis
-    silent: true
+      - mkdir -p pkg/protos/mailer
+      - |
+        protoc \
+          -I protos \
+          --go_out=pkg/protos/mailer \
+          --go_opt=paths=source_relative \
+          --go-grpc_out=pkg/protos/mailer \
+          --go-grpc_opt=paths=source_relative \
+          protos/mailer.proto

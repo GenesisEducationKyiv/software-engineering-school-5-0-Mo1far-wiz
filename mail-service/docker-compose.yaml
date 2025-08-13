@@ -1,0 +1,26 @@
+services:
+  mailer:
+    build:
+      context: ..
+      dockerfile: mail-service/Dockerfile
+      args:
+        SERVICE_NAME: mail-service
+    container_name: mailer-app
+    restart: unless-stopped
+    environment:
+      # App settings
+      APP_PORT:            "${MAILER_PORT}"
+      # Mailer
+      SMTP_USER:           "${SMTP_USER}"
+      SMTP_PASS:           "${SMTP_PASS}"
+      SMTP_HOST:           "${SMTP_HOST}"
+      SMTP_PORT:           "${SMTP_PORT}"
+    ports:
+        - "${MAILER_PORT}:${MAILER_PORT}"
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
+    external: true
