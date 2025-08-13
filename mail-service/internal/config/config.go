@@ -10,3 +10,10 @@ type SMTPConfig struct {
 	SMTPHost     string
 	SMTPPort     string
 }
+
+type RabbitConfig struct {
+	Addr         string
+	QueueName    string
+	RoutingKey   string
+	ExchangeName string
+}

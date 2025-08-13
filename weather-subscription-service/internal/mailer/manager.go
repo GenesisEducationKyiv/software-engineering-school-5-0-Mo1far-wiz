@@ -2,13 +2,13 @@ package mailer
 
 import (
 	"context"
-	"pkg/protos/mailer"
+	"log"
 	"sync"
 	"time"
 	"weather-subscription/internal/config"
 	"weather-subscription/internal/models"
+	"weather-subscription/internal/publisher"
 	"weather-subscription/internal/weather"
-	"weather-subscription/pkg/mail"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -29,7 +29,7 @@ type MailerStore interface {
 }
 
 type Manager struct {
-	MailService  *mail.MailService
+	Publisher    *publisher.EmailPublisher
 	Targets      *TargetManager
 	Forecasts    *Forecaster
 	Logger       logger
@@ -48,16 +48,20 @@ type logger interface {
 }
 
 func New(
-	mailServiceConfig config.MailServiceConfig,
+	publisherConfig config.PublishConfig,
 	weatherAPIService *weather.WeatherAPIService,
 	logger logger,
 ) *Manager {
 	forecaster := NewForecaster(weatherAPIService)
-	mailService := mail.NewMailService(mailServiceConfig, logger)
+	publisher, err := publisher.New(publisherConfig, logger)
+	if err != nil {
+		log.Panic(err)
+	}
+
 	emailBuilder := NewEmailBuilder()
 
 	return &Manager{
-		MailService:  mailService,
+		Publisher:    publisher,
 		Targets:      &TargetManager{},
 		Forecasts:    forecaster,
 		Logger:       logger,
@@ -78,18 +82,13 @@ func (m *Manager) RemoveTarget(email string, frequency string) {
 	m.Targets.RemoveTarget(email, frequency)
 }
 
-func (m *Manager) Shutdown() error {
-	return m.MailService.Disconnect()
+func (m *Manager) Shutdown() {
+	m.Publisher.Close()
 }
 
 func (m *Manager) Start() error {
 	m.running = true
 	m.stopChan = make(chan struct{})
-
-	err := m.MailService.Connect(context.Background())
-	if err != nil {
-		return errors.Wrap(err, "connection to mailer-service")
-	}
 
 	// Daily scheduler
 	m.wg.Add(1)
@@ -154,7 +153,7 @@ func (m *Manager) sendEmailBatch(frequency string, timeout time.Duration) {
 
 	emails := m.buildEmails(ctx, forecasts, m.getSubjectPrefix(frequency))
 
-	result, err := m.MailService.SendEmailBatch(ctx, emails)
+	err := m.Publisher.BatchSendEmails(ctx, emails)
 	if err != nil {
 		m.Logger.LogError("Failed to send email batch",
 			zap.String("frequency", frequency),
@@ -165,8 +164,6 @@ func (m *Manager) sendEmailBatch(frequency string, timeout time.Duration) {
 
 	m.Logger.LogInfo("Email batch sent",
 		zap.String("frequency", frequency),
-		zap.Uint64("success", *result.Success),
-		zap.Uint64("failed", *result.Failed),
 		zap.Int("total", len(emails)),
 	)
 }
@@ -175,17 +172,17 @@ func (m *Manager) buildEmails(
 	ctx context.Context,
 	forecasts []models.Forecast,
 	subjectPrefix string,
-) []*mailer.Email {
-	emails := make([]*mailer.Email, 0, len(forecasts))
+) []models.Email {
+	emails := make([]models.Email, 0, len(forecasts))
 
 	for _, f := range forecasts {
 		subj, body := m.emailBuilder.BuildWeatherForecastEmail(ctx, f.Email, f.City, f.Weather)
 		subj = subjectPrefix + subj
 
-		email := &mailer.Email{
-			ToEmail: &f.Email,
-			Subject: &subj,
-			Body:    &body,
+		email := models.Email{
+			ToEmail: f.Email,
+			Subject: subj,
+			Body:    body,
 		}
 
 		emails = append(emails, email)
@@ -224,21 +221,19 @@ func (m *Manager) Stop() {
 	close(m.stopChan)
 	m.wg.Wait()
 
-	if err := m.Shutdown(); err != nil {
-		m.Logger.LogError("Failed to shutdown mail service", zap.Error(err))
-	}
+	m.Shutdown()
 }
 
 func (m *Manager) SendEmail(to, subject, body string) error {
-	email := &mailer.Email{
-		ToEmail: &to,
-		Subject: &subject,
-		Body:    &body,
+	email := models.Email{
+		ToEmail: to,
+		Subject: subject,
+		Body:    body,
 	}
 
-	result, err := m.MailService.SendEmail(context.Background(), email)
+	err := m.Publisher.SendEmail(context.Background(), email)
 
-	if err != nil || *result.Failed == 1 {
+	if err != nil {
 		m.Logger.LogError("Failed to send email",
 			zap.String("to", to),
 			zap.String("subject", subject),

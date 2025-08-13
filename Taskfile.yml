@@ -34,6 +34,7 @@ tasks:
     desc: Start whole infrastructure (subscription-service, mail-service, DB, Redis, etc.)
     cmds:
       - docker network create app-net || true
+      - docker compose up -d
       - task: mail:up
       - task: weather:up
     silent: true
@@ -41,6 +42,7 @@ tasks:
   down:
     desc: Stop whole infrastructure (subscription-service, mail-service, DB, Redis, etc.)
     cmds:
+      - docker compose down
       - task: mail:down
       - task: weather:down
       - docker network rm app-net || true
